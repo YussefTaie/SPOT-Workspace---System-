@@ -85,6 +85,7 @@ class GuestController extends Controller
         'fullname' => $guest->fullname,
         'phone' => $guest->phone,
         'email' => $guest->email,
+        'college' => $guest->college,
         'university' => $guest->university,
         'registered_at' => $guest->created_at->format('d/m/Y'),
         'check_in' => $currentSession?->check_in ?? '-',
@@ -166,7 +167,7 @@ class GuestController extends Controller
     $guest = Guest::create($data);
 
     // 2) المحتوى اللي حنحطه داخل QR (ممكن تغيرها لـ $guest->id)
-    $qrContent = $guest->email;
+    $qrContent = url('/scan?guest_id=' . $guest->id);
 
     // 3) رابط توليد QR — استخدم Google Chart API (رمز & بدون escape)
     $qrUrl = 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($qrContent);
@@ -247,6 +248,7 @@ class GuestController extends Controller
     public function login(Request $request)
     {
     
+    
     $request->validate([
         'email' => 'required|email',
         'password' => 'required',
@@ -261,7 +263,10 @@ class GuestController extends Controller
 
     session(['guest_id' => $guest->id]);
 
-    return redirect()->route('profile.user', $guest->id);
+    return redirect()->route('profile.user', ['guest' => $guest]);
+
+    
+    
     }
 
 

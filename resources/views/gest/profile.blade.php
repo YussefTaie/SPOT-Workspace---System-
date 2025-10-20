@@ -165,6 +165,7 @@
         <h3>Guest Information</h3>
         <p class="muted">Email: {{ $userData['email'] }}</p>
         <p class="muted">Phone: {{ $userData['phone'] }}</p>
+        <p class="muted">Collage: {{ $userData['college'] }}</p>
         <p class="muted">University: {{ $userData['university'] }}</p>
 
       </div>

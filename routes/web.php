@@ -10,6 +10,10 @@
     use Illuminate\Support\Facades\Route;
 
 
+
+    Route::get('/', function () {return view('landingpage');})->name('landing');
+
+
     Route::post('/guests', [GuestController::class, 'store'])->name('guests.store');
     
     Route::get('/guests/create', [GuestController::class, 'create'])->name('guests.create');
@@ -25,18 +29,21 @@
     Route::get('/scanner', function () {return view('gest.scanner');})->name('scanner');
 
 
+    Route::get('/admin/sessions-durations', [App\Http\Controllers\AdminController::class, 'getDurations'])->name('admin.sessions.durations');
+
+
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     Route::get('/admin/sessions-data', [AdminController::class, 'getSessionsData']);
 
     Route::get('/admin/sessions-data', [App\Http\Controllers\AdminController::class, 'fetchSessionsData'])->name('admin.sessions.data');
 
-
     Route::get('/check/{id}', [SessionController::class, 'check'])->name('sessions.check');
 
     Route::post('/sessions/{session}/end', [SessionController::class, 'endSession'])->name('sessions.end');
 
     Route::get('/profile/{guest}', [GuestController::class, 'profile'])->name('profile.user');
+
 
 
 

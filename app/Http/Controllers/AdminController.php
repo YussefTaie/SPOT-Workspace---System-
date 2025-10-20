@@ -42,6 +42,25 @@ class AdminController extends Controller
     ]);
 }
 
+public function getDurations()
+{
+    $activeSessions = \App\Models\Session::with('guest')
+        ->whereNull('check_out')
+        ->get();
+
+    $durations = [];
+
+    foreach ($activeSessions as $session) {
+        $checkIn = \Carbon\Carbon::parse($session->check_in);
+        $now = \Carbon\Carbon::now();
+        $duration = $checkIn->diff($now);
+        $durations[$session->id] = $duration->h . 'h ' . $duration->i . 'm';
+    }
+
+    return response()->json($durations);
+}
+
+
 
 
 

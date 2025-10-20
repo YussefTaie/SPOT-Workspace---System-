@@ -136,7 +136,7 @@
       <tr>
         <td data-label="Guest Name">{{ $session->guest->fullname }}</td>
         <td data-label="Check-in">{{ \Carbon\Carbon::parse($session->check_in)->format('H:i') }}</td>
-        <td data-label="Duration">
+        <td data-label="Duration" id="duration-{{ $session->id }}">
       @php
       $checkIn = \Carbon\Carbon::parse($session->check_in);
       $now = \Carbon\Carbon::now();
@@ -163,6 +163,21 @@
     @endforeach
         </tbody>
       </table>
+      
+      <script>
+  setInterval(() => {
+    fetch('{{ route('admin.sessions.durations') }}')
+      .then(res => res.json())
+      .then(data => {
+        for (const [sessionId, duration] of Object.entries(data)) {
+          const cell = document.getElementById(`duration-${sessionId}`);
+          if (cell) cell.textContent = duration;
+        }
+      })
+      .catch(err => console.error('Error updating durations:', err));
+  }, 10000); // يحدث كل 10 ثواني
+</script>
+
 
       <!-- History Table -->
 <table id="historyTable" style="display:none;">
@@ -231,6 +246,50 @@
 </table>
     </div>
   </div>
+      <!-- Hidden input to capture QR scans -->
+    <input type="text" id="hiddenScanner" style="opacity:0;position:absolute;left:-9999px;">
+
+    <script>
+      const scannerInput = document.getElementById('hiddenScanner');
+
+      // تأكد إن الـ input واخد الفوكس دايمًا
+      function keepFocus() {
+        scannerInput.focus();
+      }
+      setInterval(keepFocus, 1000);
+      keepFocus();
+
+      // عند الكتابة (السكان بيكتب لينك أو guest_id)
+      scannerInput.addEventListener('change', function () {
+        const value = scannerInput.value.trim();
+        scannerInput.value = '';
+
+        // لو الكود فيه guest_id (من QR)
+        if (value.includes('guest_id=')) {
+          const url = new URL(value);
+          const guestId = url.searchParams.get('guest_id');
+
+          if (guestId) {
+            // نعمل request AJAX لبدء السيشن
+            fetch(`/scan?guest_id=${guestId}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.status === 'success') {
+                  console.log('✅ Session started:', data);
+                  // نعمل refresh للجدول أو الصفحة
+                  location.reload();
+                } else {
+                  alert('⚠️ ' + data.message);
+                }
+              })
+              .catch(err => console.error('Error:', err));
+          }
+        } else {
+          console.log('Invalid QR code scanned:', value);
+        }
+      });
+    </script>
+
 
   <script>
     const activeBtn = document.getElementById('showActive');
@@ -256,10 +315,10 @@
     });
 
 
-      // تعمل refresh كل 10 ثواني
-  setInterval(function() {
-    window.location.reload();
-  }, 30000); // 10000ms = 10 ثواني
+  //     // تعمل refresh كل 10 ثواني
+  // setInterval(function() {
+  //   window.location.reload();
+  // }, 30000); // 10000ms = 10 ثواني
   
 
   
