@@ -23,6 +23,18 @@ class Guest extends Model
         'total_expenses',
         'qr_code_path',
     ];
+    protected $hidden = [
+        'password',
+    ];
+
+    protected $casts = [
+        'registered_at' => 'datetime',
+    ];
+
+    // relations as before...
+   
+
+    
 
     public function getRouteKey()
     {
@@ -48,7 +60,7 @@ class Guest extends Model
 
     public function orders()
     {
-         return $this->hasManyThrough(Order::class, Session::class, 'guest_id', 'session_id');
+        return $this->hasManyThrough(Order::class, Session::class, 'guest_id', 'session_id');
     }
 
     public function sessions()

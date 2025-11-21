@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Guest;
 use Illuminate\Http\Request;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
 
 class GuestController extends Controller
 {
@@ -49,7 +51,7 @@ class GuestController extends Controller
             break;
 
         default:
-            $currentBill = 25;
+            $currentBill = 1;
             break;
     }
 
@@ -133,7 +135,7 @@ class GuestController extends Controller
 
     
 
-    return view('gest.profile', compact('userData'));
+    return view('gest.profile', compact('userData', 'guest'));
 }
 
 
@@ -166,8 +168,8 @@ class GuestController extends Controller
     // 1) انشأ الGuest
     $guest = Guest::create($data);
 
-    // 2) المحتوى اللي حنحطه داخل QR (ممكن تغيرها لـ $guest->id)
-    $qrContent = url('/scan?guest_id=' . $guest->id);
+   
+    $qrContent = 'http://localhost:8000/scan?guest_id=' . $guest->id;
 
     // 3) رابط توليد QR — استخدم Google Chart API (رمز & بدون escape)
     $qrUrl = 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($qrContent);

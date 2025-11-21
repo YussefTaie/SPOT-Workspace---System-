@@ -4,9 +4,13 @@
     use App\Http\Controllers\MenuItemController;
     use App\Http\Controllers\OrderController;
     use App\Http\Controllers\StaffController;
-
+    use App\Http\Controllers\BaristaController;
     use App\Http\Controllers\AdminController;
     use App\Http\Controllers\GuestController;
+    use App\Http\Controllers\StaffAuthController;
+    use App\Http\Controllers\OrderSyncController;
+    use App\Http\Controllers\Admin\MenuItemController as AdminMenuItemController;
+    
     use Illuminate\Support\Facades\Route;
 
 
@@ -32,7 +36,7 @@
     Route::get('/admin/sessions-durations', [App\Http\Controllers\AdminController::class, 'getDurations'])->name('admin.sessions.durations');
 
 
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    // Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     Route::get('/admin/sessions-data', [AdminController::class, 'getSessionsData']);
 
@@ -44,6 +48,83 @@
 
     Route::get('/profile/{guest}', [GuestController::class, 'profile'])->name('profile.user');
 
+
+    //Barista
+    // Route::get('/barista/dashboard', [BaristaController::class, 'Baristadashboard'])->name('barista.dashboard');
+
+    // Order actions used by barista
+    Route::post('/orders/{order}/accept', [\App\Http\Controllers\OrderController::class, 'accept'])->name('orders.accept');
+
+    Route::post('/orders/{order}/mark-done', [\App\Http\Controllers\OrderController::class, 'markDone'])->name('orders.markDone');
+    
+    Route::post('/orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+
+
+    // Menu CRUD
+    Route::get('/barista/menu', [MenuItemController::class, 'menu'])->name('barista.menu');
+
+    // صفحة المستخدم العامة للـ menu
+    Route::get('/menu', [MenuItemController::class, 'index'])->name('menu.index');
+
+    Route::get('/menu/{guest}', [App\Http\Controllers\MenuItemController::class, 'guestMenu'])->name('menu.guest');
+
+    // show create form
+    Route::get('/menu/create', [App\Http\Controllers\Admin\MenuItemController::class, 'create'])->name('admin.menu.create');
+
+    // show edit form
+    Route::get('/menu/{menuItem}/edit', [App\Http\Controllers\Admin\MenuItemController::class, 'edit'])->name('admin.menu.edit');
+
+
+
+
+
+
+    // Staff auth
+    Route::get('/staff/login', [StaffAuthController::class, 'showLogin'])->name('staff.login');
+    Route::post('/staff/login', [StaffAuthController::class, 'login'])->name('staff.login.submit');
+    Route::post('/staff/logout', [StaffAuthController::class, 'logout'])->name('staff.logout');
+
+    // Barista routes (محميين بميدل وير)
+    Route::prefix('barista')->middleware(['auth.staff', 'is_barista'])->group(function () {
+
+
+    Route::get('/dashboard', [\App\Http\Controllers\BaristaController::class, 'Baristadashboard'])->name('barista.dashboard');   
+    // عرض المينيو للبارستا - نستخدم BaristaController عشان نمرّر guest وهمي
+    Route::get('/menu', [BaristaController::class, 'menu'])->name('barista.menu');
+
+    // Past orders للبارستا (اختياري ولكن مفيد)
+    Route::get('/orders/past', [BaristaController::class, 'pastOrders'])->name('barista.orders.past');  
+
+    Route::get('/barista/orders/partials', [\App\Http\Controllers\Barista\OrderSyncController::class, 'partials'])
+     ->name('barista.orders.partials');
+
+     Route::get('/orders/partials', [\App\Http\Controllers\Barista\OrderSyncController::class, 'partials'])
+     ->name('barista.orders.partials');
+
+
+
+    // مثال: رووت صفحة منيو الباريستا (لو تستخدمها)
+    // Route::get('/menu', [MenuItemController::class, 'menu'])->name('barista.menu');
+
+    // إجراءات الأوردر الخاصة بالباريستا
+    Route::post('/orders/{order}/accept', [OrderController::class, 'accept'])->name('orders.accept');
+    Route::post('/orders/{order}/mark-done', [OrderController::class, 'markDone'])->name('orders.markDone');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    });
+    
+
+
+    Route::prefix('admin')->middleware(['auth.staff', 'is_admin'])->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    
+        // إدارة المنيو بواسطة الأدمن
+        Route::get('/menu', [App\Http\Controllers\Admin\MenuItemController::class, 'index'])->name('admin.menu.index');
+        Route::get('/menu/create', [App\Http\Controllers\Admin\MenuItemController::class, 'create'])->name('admin.menu.create');
+        Route::post('/menu', [App\Http\Controllers\Admin\MenuItemController::class, 'store'])->name('admin.menu.store');
+        Route::get('/menu/{menuItem}/edit', [App\Http\Controllers\Admin\MenuItemController::class, 'edit'])->name('admin.menu.edit');
+        Route::put('/menu/{menuItem}', [App\Http\Controllers\Admin\MenuItemController::class, 'update'])->name('admin.menu.update');
+        Route::delete('/menu/{menuItem}', [App\Http\Controllers\Admin\MenuItemController::class, 'destroy'])->name('admin.menu.destroy');
+    });
 
 
 

@@ -6,6 +6,7 @@ use App\Models\Session;
 use App\Models\Guest;
 use Illuminate\Http\Request;
 
+
 class SessionController extends Controller
 {
     public function index()
@@ -129,7 +130,7 @@ public function endSession(Session $session)
             break;
 
         default:
-            $billAmount = 25; // لو أقل من ساعة مثلاً أو خطأ
+            $billAmount = 1; // لو أقل من ساعة مثلاً أو خطأ
             break;
     }
 
@@ -148,39 +149,76 @@ public function endSession(Session $session)
 
 public function check($id)
 {
-    $session = \App\Models\Session::with('guest')->findOrFail($id);
+    // جلب السيشن مع الجيست والأوردرات والمنتجات
+    $session = \App\Models\Session::with(['guest','orders.menuItem'])->findOrFail($id);
 
     // نحسب الديوريشن
     $checkIn = \Carbon\Carbon::parse($session->check_in);
     $checkOut = $session->check_out ? \Carbon\Carbon::parse($session->check_out) : \Carbon\Carbon::now();
     $duration = $checkIn->diff($checkOut);
-    $hours = $duration->h + ($duration->i / 60);
-    
+    // عدد الساعات كفواصل (مثال: 1.5 ساعة)
+    $hoursFloat = ($duration->days * 24) + $duration->h + ($duration->i / 60);
+
+    // حساب الفاتورة للسيشن (نفس المنطق اللي عندك)
     switch (true) {
-    case ($hours >= 1 && $hours < 3):
-        $bill = 50;
-        break;
+        case ($hoursFloat >= 1 && $hoursFloat < 3):
+            $bill = 50;
+            break;
+        case ($hoursFloat >= 3 && $hoursFloat < 6):
+            $bill = 80;
+            break;
+        case ($hoursFloat >= 6 && $hoursFloat < 12):
+            $bill = 100;
+            break;
+        case ($hoursFloat >= 12 && $hoursFloat <= 24):
+            $bill = 120;
+            break;
+        default:
+            $bill = 1;
+            break;
+    }
 
-    case ($hours >= 3 && $hours < 6):
-        $bill = 80;
-        break;
+    // نجيب كل الأوردرات (ما عدا الملغية) عشان نعرض تفاصيلها،
+    // لكن لما نحسب المجموع هنأخد بس ال Done
+    $orders = $session->orders->whereNotIn('status', ['Canceled']);
 
-    case ($hours >= 6 && $hours < 12):
-        $bill = 100;
-        break;
+    $drinksTotal = 0;
+    $drinksDetails = [];
 
-    case ($hours >= 12 && $hours <= 24):
-        $bill = 120;
-        break;
+    foreach ($orders as $order) {
+        // حساب unitPrice و subtotal (fallbacks آمنة)
+        if (!is_null($order->total_price)) {
+            $subtotal = (float) $order->total_price;
+            $unitPrice = $order->unit_price ?? ($order->quantity ? $subtotal / $order->quantity : 0);
+        } else {
+            $unitPrice = $order->unit_price ?? (optional($order->menuItem)->price ?? 0);
+            $qty = $order->quantity ?? 1;
+            $subtotal = $unitPrice * $qty;
+        }
 
-    default:
-        $bill = 25;
-        break;
+        $qty = $order->quantity ?? 1;
+
+        // فقط الأوردرات اللي حالتهم Done يضيفوا للمجموع
+        if ($order->status === 'Done') {
+            $drinksTotal += $subtotal;
+        }
+
+        $drinksDetails[] = [
+            'name' => optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id,
+            'price' => $unitPrice,
+            'qty' => $qty,
+            'subtotal' => $subtotal,
+            'status' => $order->status,
+        ];
+    }
+
+    $grandTotal = round($bill + $drinksTotal, 2);
+
+    return view('gest.check', compact('session', 'duration', 'bill', 'drinksTotal', 'drinksDetails', 'grandTotal'));
 }
 
 
-    return view('gest.check', compact('session', 'duration', 'bill'));
-}
+
 
 
 

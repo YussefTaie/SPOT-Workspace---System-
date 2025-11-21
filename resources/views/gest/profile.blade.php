@@ -156,7 +156,7 @@
             @endforeach
         </div>
         <div style="margin-top:12px; text-align: start;">
-            <button class="btn">Order Now</button>
+            <button class="btn" onclick="window.location.href='{{ route('menu.guest', ['guest' => $userData['id'] ?? $guest->id]) }}'">Order Now</button>
         </div>
         </div>
 

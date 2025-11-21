@@ -11,7 +11,7 @@ class AdminController extends Controller
     {
         // نجيب كل الـ guests اللي عاملين check-in ولسه مخرجوش
         $activeSessions = Session::with('guest')
-            ->whereNull('check_out')
+            ->whereNull('check_out')  
             ->get();
 
         // نجيب الهيستوري (اللي خرجوا)  

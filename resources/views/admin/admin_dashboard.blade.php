@@ -117,6 +117,7 @@
         <div style="display:flex;gap:8px;">
           <button class="btn" id="showActive">Active Guests</button>
           <button class="btn ghost" id="showHistory">Check-out History</button>
+          <button class="btn ghost" onclick="window.location.href='{{ route('admin.menu.index') }}'" id="menu">Edit Menu</button>
         </div>
       </div>
 
@@ -192,11 +193,22 @@
     </tr>
   </thead>
   <tbody>
-@foreach ($historySessions as $date => $sessions)
-  {{-- عنوان اليوم --}}
+
+  @foreach ($historySessions as $date => $sessions)
+    {{-- عنوان اليوم --}}
+
+    @php
+    // نتأكد من تحويل $sessions الى Collection علشان نقدر نستخدم sum بسهولة
+    $daySessions = collect($sessions);
+    $dayTotal = $daySessions->sum(function($s) {
+        return (float) ($s->bill_amount ?? 0);
+    });
+  @endphp
+
 <tr style="background: #efefef;">
   <td colspan="6" style="text-align:center; font-weight:bold; color:#333;">
     📅 {{ \Carbon\Carbon::parse($date)->translatedFormat('l, d M Y') }}
+    <span style="margin-left:12px; font-weight:600; color:#111;">— Total: {{ number_format($dayTotal, 2) }} EGP</span>
   </td>
 </tr>
 
@@ -248,47 +260,56 @@
   </div>
       <!-- Hidden input to capture QR scans -->
     <input type="text" id="hiddenScanner" style="opacity:0;position:absolute;left:-9999px;">
+    <!-- <input type="text" id="hiddenScanner" > -->
 
-    <script>
-      const scannerInput = document.getElementById('hiddenScanner');
+  <script>
+    const scannerInput = document.getElementById('hiddenScanner');
 
-      // تأكد إن الـ input واخد الفوكس دايمًا
-      function keepFocus() {
-        scannerInput.focus();
-      }
-      setInterval(keepFocus, 1000);
-      keepFocus();
+    // حافظ على الفوكس
+    function keepFocus() {
+      scannerInput.focus();
+    }
+    setInterval(keepFocus, 1000);
+    keepFocus();
 
-      // عند الكتابة (السكان بيكتب لينك أو guest_id)
-      scannerInput.addEventListener('change', function () {
-        const value = scannerInput.value.trim();
-        scannerInput.value = '';
+    // إضافة بسيطة مع debounce بدلاً من dispatch فوري
+    let dispatchTimeout = null;
+    scannerInput.addEventListener('input', function () {
+      clearTimeout(dispatchTimeout);
+      // نأجل تنفيذ change لحد ما يوقف الإدخال 120ms
+      dispatchTimeout = setTimeout(() => {
+        scannerInput.dispatchEvent(new Event('change'));
+      }, 120);
+    });
 
-        // لو الكود فيه guest_id (من QR)
-        if (value.includes('guest_id=')) {
-          const url = new URL(value);
-          const guestId = url.searchParams.get('guest_id');
+    // باقي سكريبتك بدون أي تعديل
+    scannerInput.addEventListener('change', function () {
+      const value = scannerInput.value.trim();
+      scannerInput.value = '';
 
-          if (guestId) {
-            // نعمل request AJAX لبدء السيشن
-            fetch(`/scan?guest_id=${guestId}`)
-              .then(res => res.json())
-              .then(data => {
-                if (data.status === 'success') {
-                  console.log('✅ Session started:', data);
-                  // نعمل refresh للجدول أو الصفحة
-                  location.reload();
-                } else {
-                  alert('⚠️ ' + data.message);
-                }
-              })
-              .catch(err => console.error('Error:', err));
-          }
-        } else {
-          console.log('Invalid QR code scanned:', value);
+      if (value.includes('guest_id=')) {
+        const url = new URL(value);
+        const guestId = url.searchParams.get('guest_id');
+
+        if (guestId) {
+          fetch(`/scan?guest_id=${guestId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                console.log('✅ Session started:', data);
+                location.reload();
+              } else {
+                alert('⚠️ ' + data.message);
+              }
+            })
+            .catch(err => console.error('Error:', err));
         }
-      });
-    </script>
+      } else {
+        console.log('Invalid QR code scanned:', value);
+      }
+    });
+</script>
+
 
 
   <script>
@@ -313,15 +334,6 @@
       historyBtn.classList.remove('ghost');
       activeBtn.classList.add('ghost');
     });
-
-
-  //     // تعمل refresh كل 10 ثواني
-  // setInterval(function() {
-  //   window.location.reload();
-  // }, 30000); // 10000ms = 10 ثواني
-  
-
-  
 
 
   </script>

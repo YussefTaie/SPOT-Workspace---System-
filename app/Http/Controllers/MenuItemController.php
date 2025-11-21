@@ -3,52 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\MenuItem;
+use App\Models\Guest;
 use Illuminate\Http\Request;
 
 class MenuItemController extends Controller
 {
-    public function index()
+    // View for barista (if you use it)
+    public function menu()
     {
-        $menuItems = MenuItem::all();
-        return view('menu.index', compact('menuItems'));
+        $menuItems = MenuItem::where('available', true)->orderBy('name')->get();
+        return view('barista.menu', compact('menuItems'));
     }
 
-    public function create()
+    // Public menu index (uses resources/views/menu/index.blade.php)
+    public function index(Request $request)
     {
-        return view('menu.create');
+        $query = MenuItem::query();
+
+        // optional search
+        if ($q = $request->input('q')) {
+            $query->where('name', 'like', "%{$q}%")
+                  ->orWhere('description', 'like', "%{$q}%");
+        }
+
+        // optional category filter
+        if ($request->filled('category') && $request->category !== 'all') {
+            $query->where('category', $request->category);
+        }
+
+        $menuItems = $query->where('available', true)->orderBy('created_at', 'desc')->get();
+        return view('admin.menu.index', compact('menuItems'));
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required',
-            'price' => 'required|numeric',
-            'category' => 'required'
-        ]);
+    // باقي الدوال create/store/show/edit/update/destroy زي ما عندك...
 
-        MenuItem::create($request->all());
-        return redirect()->route('menu.index')->with('success', 'Item added successfully');
-    }
+    public function guestMenu(Guest $guest)
+{
+    // نجيب المنيو كلها (أو الفئات اللي متاحة فقط)
+    $menuItems = MenuItem::where('available', true)->orderBy('name')->get();
 
-    public function show(MenuItem $menuItem)
-    {
-        return view('menu.show', compact('menuItem'));
-    }
-
-    public function edit(MenuItem $menuItem)
-    {
-        return view('menu.edit', compact('menuItem'));
-    }
-
-    public function update(Request $request, MenuItem $menuItem)
-    {
-        $menuItem->update($request->all());
-        return redirect()->route('menu.index')->with('success', 'Item updated successfully');
-    }
-
-    public function destroy(MenuItem $menuItem)
-    {
-        $menuItem->delete();
-        return redirect()->route('menu.index')->with('success', 'Item deleted successfully');
-    }
+    // نرجع الصفحة مع بيانات الجيست
+    return view('barista.menu', compact('menuItems', 'guest'));
+}
 }

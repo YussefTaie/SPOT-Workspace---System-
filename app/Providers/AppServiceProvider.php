@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        date_default_timezone_set('Etc/GMT-3');
+        date_default_timezone_set('Africa/Cairo');
         //
     }
 }
