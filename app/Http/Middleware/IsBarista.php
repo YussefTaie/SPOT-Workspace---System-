@@ -9,13 +9,12 @@ class IsBarista
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::guard('staff')->user() ?? Auth::user();
-
-        if (! $user || strtolower($user->role ?? '') !== 'barista') {
-            // ممكن ترجع 403 أو redirect لصفحة أخرى
+        $user = Auth::guard('barista')->user();
+        if (!$user || $user->role !== 'barista') {
             abort(403, 'Forbidden');
         }
-
         return $next($request);
+        
+
     }
 }

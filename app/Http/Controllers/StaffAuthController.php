@@ -15,48 +15,65 @@ class StaffAuthController extends Controller
 
     // Login handler
     public function login(Request $request)
-    {
-        // Validate input
-        $request->validate([
-            'email' => ['required','email'],
-            'password' => ['required'],
-        ]);
+{
+    $request->validate([
+        'email' => ['required','email'],
+        'password' => ['required'],
+    ]);
 
-        $credentials = $request->only('email', 'password');
-        $remember = $request->boolean('remember', false);
+    $credentials = $request->only('email', 'password');
+    $remember = $request->boolean('remember', false);
 
-        // Attempt to login using the 'staff' guard
-        if (Auth::guard('staff')->attempt($credentials, $remember)) {
+    $staff = \App\Models\Staff::where('email', $credentials['email'])->first();
 
-            // IMPORTANT: regenerate session to prevent fixation + ensure CSRF token is fresh
-            $request->session()->regenerate();
-
-            // Optional: if you want role-based redirect (admin vs barista)
-            $staff = Auth::guard('staff')->user();
-
-            if ($staff && strtolower($staff->role ?? '') === 'barista') {
-                return redirect()->route('barista.dashboard');
-            }
-
-            // default after staff login
-            return redirect()->route('admin.dashboard');
-        }
-
-        // on failure
+    if (!$staff) {
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ])->withInput($request->only('email'));
     }
 
+    // تحديد الـ guard بناءً على الدور
+    $guard = null;
+    if (strtolower($staff->role) === 'admin') {
+        $guard = 'admin';
+    } elseif (strtolower($staff->role) === 'barista') {
+        $guard = 'barista';
+    }
+
+    if ($guard && Auth::guard($guard)->attempt($credentials, $remember)) {
+        $request->session()->regenerate();
+
+        if ($guard === 'barista') {
+            return redirect()->route('barista.dashboard');
+        }
+
+        return redirect()->route('admin.dashboard');
+    }
+
+    return back()->withErrors([
+        'email' => 'The provided credentials do not match our records.',
+    ])->withInput($request->only('email'));
+}
+
+
     // Logout
     public function logout(Request $request)
-    {
-        Auth::guard('staff')->logout();
+{
+    $guard = null;
+    $staff = Auth::guard('admin')->user() ?? Auth::guard('barista')->user();
 
-        // invalidate session and regenerate token
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('staff.login');
+    if ($staff) {
+        $guard = strtolower($staff->role);
     }
+
+    if ($guard) {
+        Auth::guard($guard)->logout();
+    }
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('staff.login');
+}
+
 }

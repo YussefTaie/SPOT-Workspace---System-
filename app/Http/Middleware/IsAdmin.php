@@ -10,17 +10,12 @@ class IsAdmin
 {
     public function handle(Request $request, Closure $next)
     {
-        // تحقق إن الـ staff مسجل دخول عبر guard staff
-        if (!Auth::guard('staff')->check()) {
-            abort(403, 'Unauthorized.');
-        }
+        $user = Auth::guard('admin')->user();
+if (!$user || $user->role !== 'admin') {
+    abort(403, 'Unauthorized');
+}
+return $next($request);
 
-        $user = Auth::guard('staff')->user();
 
-        if (!isset($user->role) || $user->role !== 'admin') {
-            abort(403, 'Unauthorized.');
-        }
-
-        return $next($request);
     }
 }

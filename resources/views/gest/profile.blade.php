@@ -167,6 +167,8 @@
         <p class="muted">Phone: {{ $userData['phone'] }}</p>
         <p class="muted">Collage: {{ $userData['college'] }}</p>
         <p class="muted">University: {{ $userData['university'] }}</p>
+        <p>Here’s your unique QR code 👇</p>
+        {!! QrCode::size(250)->generate(url('/scan?guest_id=' . $guest->id)) !!}
 
       </div>
 

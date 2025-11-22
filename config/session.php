@@ -2,6 +2,20 @@
 
 use Illuminate\Support\Str;
 
+if (isset($_SERVER['REQUEST_URI'])) {
+
+    if (str_starts_with($_SERVER['REQUEST_URI'], 'admin')) {
+        config(['session.cookie' => env('ADMIN_SESSION_COOKIE', 'admin_session')]);
+    }
+
+    if (str_starts_with($_SERVER['REQUEST_URI'], 'barista')) {
+        config(['session.cookie' => env('BARISTA_SESSION_COOKIE', 'barista_session')]);
+    }
+}
+
+
+
+
 return [
 
     /*

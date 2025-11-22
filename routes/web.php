@@ -85,7 +85,7 @@
     Route::post('/staff/logout', [StaffAuthController::class, 'logout'])->name('staff.logout');
 
     // Barista routes (محميين بميدل وير)
-    Route::prefix('barista')->middleware(['auth.staff', 'is_barista'])->group(function () {
+    Route::prefix('barista')->middleware(['auth:barista', 'is_barista'])->group(function () {
 
 
     Route::get('/dashboard', [\App\Http\Controllers\BaristaController::class, 'Baristadashboard'])->name('barista.dashboard');   
@@ -114,7 +114,7 @@
     
 
 
-    Route::prefix('admin')->middleware(['auth.staff', 'is_admin'])->group(function () {
+    Route::prefix('admin')->middleware(['auth:admin', 'is_admin'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
         // إدارة المنيو بواسطة الأدمن

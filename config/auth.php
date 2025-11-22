@@ -11,29 +11,17 @@ return [
 
 
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
-        'staff' => [
-            'driver' => 'session',
-            'provider' => 'staffs',
-        ],
-    ],
+    'admin' => ['driver' => 'session', 'provider' => 'staffs'],
+    'barista' => ['driver' => 'session', 'provider' => 'staffs'],
+],
+'providers' => [
+    'staffs' => ['driver' => 'eloquent', 'model' => App\Models\Staff::class],
+],
 
 
 
-    'providers' => [
-        'users' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\User::class,
-        ],
-        'staffs' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Staff::class,
-        ],
 
-    ],
+
 
 
 
