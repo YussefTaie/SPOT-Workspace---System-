@@ -81,7 +81,15 @@ class BaristaController extends Controller
      */
     public function menu()
     {
-        $staff = Auth::guard('staff')->user() ?? Auth::user();
+        $staff = Auth::guard('admin')->user();
+            if (! $staff) {
+                $staff = Auth::guard('barista')->user();
+            }
+
+            if (! $staff) {
+                abort(403, 'Forbidden');
+            }
+
 
         if (! $staff) {
             // fallback: require staff auth by middleware; but safe fallback:
