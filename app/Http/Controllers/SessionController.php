@@ -111,26 +111,38 @@ public function endSession(Session $session)
     // احسب الفاتورة بناءً على rate_per_hour
     $hours = $durationMinutes / 60;
     $billAmount = 0;
+    $grace = 0.5;
 
     switch (true) {
-        case ($hours >= 1 && $hours < 3):
+
+        // 0 → 1.5 ساعة
+        case ($hours < 1 + $grace):
+            $billAmount = 25;
+            break;
+
+        // 1 → 3.5 ساعة
+        case ($hours >= 1 && $hours < 3 + $grace):
             $billAmount = 50;
             break;
 
-        case ($hours >= 3 && $hours < 6):
+        // 3 → 6.5 ساعة
+        case ($hours >= 3 && $hours < 6 + $grace):
             $billAmount = 80;
             break;
 
-        case ($hours >= 6 && $hours < 12):
-            $billAmount = 100;
-            break;
-
-        case ($hours >= 12 && $hours <= 24):
+        // 6 → 12.5 ساعة
+        case ($hours >= 6 && $hours < 12 + $grace):
             $billAmount = 120;
             break;
 
+        // أكتر من 12.5 ساعة = 150 جنيه
+        case ($hours >= 12 + $grace):
+            $billAmount = 150;
+            break;
+
+        // للفاتورة اللي مالهاش سيشن
         default:
-            $billAmount = 1; // لو أقل من ساعة مثلاً أو خطأ
+            $billAmount = 1;
             break;
     }
 
@@ -158,21 +170,31 @@ public function check($id)
     $duration = $checkIn->diff($checkOut);
     // عدد الساعات كفواصل (مثال: 1.5 ساعة)
     $hoursFloat = ($duration->days * 24) + $duration->h + ($duration->i / 60);
-
+    $grace = 0.5;
     // حساب الفاتورة للسيشن (نفس المنطق اللي عندك)
     switch (true) {
-        case ($hoursFloat >= 1 && $hoursFloat < 3):
+
+        // 1 → 3.5
+        case ($hoursFloat >= 1 && $hoursFloat < (3 + $grace)):
             $bill = 50;
             break;
-        case ($hoursFloat >= 3 && $hoursFloat < 6):
+    
+        // 3 → 6.5
+        case ($hoursFloat >= 3 && $hoursFloat < (6 + $grace)):
             $bill = 80;
             break;
-        case ($hoursFloat >= 6 && $hoursFloat < 12):
+    
+        // 6 → 12.5
+        case ($hoursFloat >= 6 && $hoursFloat < (12 + $grace)):
             $bill = 100;
             break;
-        case ($hoursFloat >= 12 && $hoursFloat <= 24):
+    
+        // 12.5 → 24
+        case ($hoursFloat >= (12 + $grace) && $hoursFloat <= 24):
             $bill = 120;
             break;
+    
+        // default
         default:
             $bill = 1;
             break;

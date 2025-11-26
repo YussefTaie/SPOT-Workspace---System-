@@ -33,27 +33,36 @@ class GuestController extends Controller
         // حساب عدد الساعات كـ float
         $hours = $duration->days * 24 + $duration->h + ($duration->i / 60);
 
-    switch (true) {
-        case ($hours >= 1 && $hours < 3):
-            $currentBill = 50;
-            break;
+        $grace = 0.5; // 30 دقيقة
 
-        case ($hours >= 3 && $hours < 6):
-            $currentBill = 80;
-            break;
-
-        case ($hours >= 6 && $hours < 12):
-            $currentBill = 100;
-            break;
-
-        case ($hours >= 12 && $hours <= 24):
-            $currentBill = 120;
-            break;
-
-        default:
-            $currentBill = 1;
-            break;
-    }
+        switch (true) {
+        
+            // 1 → 3.5
+            case ($hours >= 1 && $hours < (3 + $grace)):
+                $currentBill = 50;
+                break;
+        
+            // 3 → 6.5
+            case ($hours >= 3 && $hours < (6 + $grace)):
+                $currentBill = 80;
+                break;
+        
+            // 6 → 12.5
+            case ($hours >= 6 && $hours < (12 + $grace)):
+                $currentBill = 100;
+                break;
+        
+            // 12.5 → 24
+            case ($hours >= (12 + $grace) && $hours <= 24):
+                $currentBill = 120;
+                break;
+        
+            // default = 1
+            default:
+                $currentBill = 1;
+                break;
+        }
+        
 
     }
 
