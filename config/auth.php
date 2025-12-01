@@ -13,6 +13,7 @@ return [
     'guards' => [
     'admin' => ['driver' => 'session', 'provider' => 'staffs'],
     'barista' => ['driver' => 'session', 'provider' => 'staffs'],
+    'host' => ['driver' => 'session', 'provider' => 'staffs'],
 ],
 'providers' => [
     'staffs' => ['driver' => 'eloquent', 'model' => App\Models\Staff::class],

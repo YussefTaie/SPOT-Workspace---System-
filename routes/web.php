@@ -126,6 +126,11 @@
         Route::delete('/menu/{menuItem}', [App\Http\Controllers\Admin\MenuItemController::class, 'destroy'])->name('admin.menu.destroy');
     });
 
+    // HOST ROUTES
+    Route::prefix('host')->middleware(['auth:host', 'is_host'])->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'host'])->name('host.dashboard');
+    });
+    
 
 
 

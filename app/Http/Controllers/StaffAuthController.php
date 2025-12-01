@@ -38,6 +38,8 @@ class StaffAuthController extends Controller
         $guard = 'admin';
     } elseif (strtolower($staff->role) === 'barista') {
         $guard = 'barista';
+    } elseif (strtolower($staff->role) === 'host') {
+        $guard = 'host';   // NEW
     }
 
     if ($guard && Auth::guard($guard)->attempt($credentials, $remember)) {
@@ -45,6 +47,10 @@ class StaffAuthController extends Controller
 
         if ($guard === 'barista') {
             return redirect()->route('barista.dashboard');
+        }
+
+        if ($guard === 'host') {
+            return redirect()->route('host.dashboard'); // NEW
         }
 
         return redirect()->route('admin.dashboard');
@@ -60,7 +66,7 @@ class StaffAuthController extends Controller
     public function logout(Request $request)
 {
     $guard = null;
-    $staff = Auth::guard('admin')->user() ?? Auth::guard('barista')->user();
+    $staff = Auth::guard('admin')->user() ?? Auth::guard('barista')->user() ?? Auth::guard('host')->user();
 
     if ($staff) {
         $guard = strtolower($staff->role);

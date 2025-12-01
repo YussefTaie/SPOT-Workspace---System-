@@ -26,6 +26,25 @@ class AdminController extends Controller
         return view('admin.admin_dashboard', compact('activeSessions', 'historySessions'));
     }
 
+    public function host()
+    {
+        // نفس الداتا بالظبط
+        $activeSessions = Session::with('guest')
+            ->whereNull('check_out')
+            ->get();
+    
+        $historySessions = Session::with('guest')
+            ->whereNotNull('check_out')
+            ->orderBy('check_out', 'desc')
+            ->get()
+            ->groupBy(function($session) {
+                return \Carbon\Carbon::parse($session->check_out)->format('Y-m-d');
+            });
+    
+        // رجّعها للـ host.blade.php
+        return view('admin.host', compact('activeSessions', 'historySessions'));
+    }
+
     public function fetchSessionsData()
 {
     $activeSessions = Session::with('guest')
