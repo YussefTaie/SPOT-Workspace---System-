@@ -284,30 +284,36 @@
 
     // باقي سكريبتك بدون أي تعديل
     scannerInput.addEventListener('change', function () {
-      const value = scannerInput.value.trim();
-      scannerInput.value = '';
+  const rawValue = scannerInput.value;
+  scannerInput.value = '';
 
-      if (value.includes('guest_id=')) {
-        const url = new URL(value);
-        const guestId = url.searchParams.get('guest_id');
+  console.log('RAW SCAN:', rawValue);
 
-        if (guestId) {
-          fetch(`/scan?guest_id=${guestId}`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.status === 'success') {
-                console.log('✅ Session started:', data);
-                location.reload();
-              } else {
-                alert('⚠️ ' + data.message);
-              }
-            })
-            .catch(err => console.error('Error:', err));
-        }
+  const match = rawValue.match(/=(\d+)/);
+
+  console.log('MATCH:', match);
+
+  if (!match) {
+    alert('NO MATCH FOUND');
+    return;
+  }
+
+  const guestId = match[1];
+
+  console.log('GUEST ID SENT:', guestId);
+
+  fetch(`/scan?guest_id=${guestId}`)
+    .then(res => res.json())
+    .then(data => {
+      console.log('SERVER RESPONSE:', data);
+      if (data.status === 'success') {
+        location.reload();
       } else {
-        console.log('Invalid QR code scanned:', value);
+        alert('⚠️ ' + data.message);
       }
     });
+});
+
 </script>
 
 

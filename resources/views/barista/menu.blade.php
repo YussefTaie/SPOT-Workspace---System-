@@ -65,6 +65,8 @@
     .quantity{display:flex;gap:6px;align-items:center;font-weight:700}
     .qty-btn{width:30px;height:30px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:white}
     .empty{padding:28px;text-align:center;color:var(--muted);border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));}
+    .cart-controls{display:flex;gap:6px;align-items:center}
+    .cart-remove{background:transparent;border:0;color:var(--danger);cursor:pointer;font-weight:700}
     @media(max-width:1000px){ .menu-grid{grid-template-columns:repeat(2,1fr)} .content{grid-template-columns:1fr} .side{position:static} }
     @media(max-width:560px){ .menu-grid{grid-template-columns:1fr} .logo{width:48px;height:48px;font-size:18px} .thumb{width:56px;height:56px} }
   </style>
@@ -85,7 +87,6 @@
           <h1>Spot Drinks Menu</h1>
         </div>
       </div>
-
       <div class="controls">
         <div class="search" title="Search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:0.7"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/></svg>
@@ -107,7 +108,8 @@
     <div class="content">
 
       <aside class="side">
-        <div class="card">
+        
+        <!-- <div class="card">
           <h3>Categories</h3>
           <div class="categories" id="categories">
             <div class="cat active" data-cat="all">All <span class="muted">{{ $menuItems->count() }}</span></div>
@@ -115,7 +117,7 @@
               <div class="cat" data-cat="{{ $c }}">{{ ucfirst($c) }} <span class="muted">{{ $menuItems->where('category',$c)->count() }}</span></div>
             @endforeach
           </div>
-        </div>
+        </div> -->
 
         <div class="card">
           <h3>Cart</h3>
@@ -214,7 +216,7 @@
       return parseFloat(p) || 0;
     }
 
-    // quantity buttons
+    // quantity buttons inside menu cards
     function initQtyButtons(scope=document){
       scope.querySelectorAll('.qty-btn').forEach(btn=>{
         btn.addEventListener('click', ()=> {
@@ -245,6 +247,21 @@
       });
     }
 
+    // remove item from cart
+    function removeFromCart(id){
+      cart = cart.filter(i=>i.id !== id);
+      renderCart();
+    }
+
+    // change qty for an item in cart (set absolute) — if qty <= 0 remove
+    function setCartItemQty(id, newQty){
+      const it = cart.find(x=>x.id===id);
+      if(!it) return;
+      it.qty = Math.max(0, parseInt(newQty) || 0);
+      if(it.qty === 0) removeFromCart(id);
+      else renderCart();
+    }
+
     function renderCart(){
       cartListEl.innerHTML = '';
       if(cart.length === 0){
@@ -256,9 +273,56 @@
         cart.forEach(item=>{
           const row = document.createElement('div');
           row.className = 'cart-item';
-          row.innerHTML = `<div style="font-weight:700">${item.name} <div class="muted" style="font-size:12px">x${item.qty}</div></div>
-                           <div style="text-align:right">${formatPrice(item.price*item.qty)}</div>`;
+          // Build inner HTML with qty controls + remove button
+          row.innerHTML = `
+            <div style="display:flex;flex-direction:column;">
+              <div style="font-weight:700">${item.name}</div>
+              <div class="muted" style="font-size:12px">${formatPrice(item.price)} each</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <div class="cart-controls">
+                <button class="qty-btn cart-decr" data-id="${item.id}">-</button>
+                <input class="cart-qty-input" data-id="${item.id}" value="${item.qty}" style="width:40px;text-align:center;border-radius:6px;border:1px solid rgba(0,0,0,0.06);padding:6px" />
+                <button class="qty-btn cart-incr" data-id="${item.id}">+</button>
+                <button class="cart-remove" data-id="${item.id}">Remove</button>
+              </div>
+              <div style="font-weight:800">${formatPrice(item.price * item.qty)}</div>
+            </div>
+          `;
           cartListEl.appendChild(row);
+        });
+
+        // attach listeners for newly created controls
+        cartListEl.querySelectorAll('.cart-remove').forEach(b=>{
+          b.addEventListener('click', ()=> removeFromCart(b.dataset.id));
+        });
+        cartListEl.querySelectorAll('.cart-decr').forEach(b=>{
+          b.addEventListener('click', ()=>{
+            const id = b.dataset.id;
+            const it = cart.find(x=>x.id===id);
+            if(!it) return;
+            setCartItemQty(id, it.qty - 1);
+          });
+        });
+        cartListEl.querySelectorAll('.cart-incr').forEach(b=>{
+          b.addEventListener('click', ()=>{
+            const id = b.dataset.id;
+            const it = cart.find(x=>x.id===id);
+            if(!it) return;
+            setCartItemQty(id, it.qty + 1);
+          });
+        });
+        cartListEl.querySelectorAll('.cart-qty-input').forEach(inp=>{
+          inp.addEventListener('change', ()=>{
+            const id = inp.dataset.id;
+            let v = parseInt(inp.value) || 0;
+            if(v < 0) v = 0;
+            setCartItemQty(id, v);
+          });
+          // allow arrow/keypress changes (optional)
+          inp.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter') inp.dispatchEvent(new Event('change'));
+          });
         });
       }
       const total = cart.reduce((s,i)=>s + i.price * i.qty, 0);
@@ -317,12 +381,9 @@
             cart,
             guest_id: guestId,
             takeaway: document.getElementById('takeawayCheckbox')?.checked || false
-            // optional: takeaway flag if you support it on server
-            // takeaway: true
           })
         });
 
-        // get raw text first (in case server returned HTML error page)
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch(e) { /* not JSON */ }
@@ -332,7 +393,6 @@
         if (data) console.log('Order response json:', data);
 
         if (!res.ok) {
-          // common statuses: 419 => CSRF/session, 403 => forbidden, 500 => server error
           if (res.status === 419) {
             alert('Session expired (419). Try logging in again.');
           } else if (res.status === 403) {
