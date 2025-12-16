@@ -111,7 +111,7 @@ public function endSession(Session $session)
     // احسب الفاتورة بناءً على rate_per_hour
     $hours = $durationMinutes / 60;
     $billAmount = 0;
-    $grace = 0.5;
+    $grace = 0.25;
 
     switch (true) {
 
@@ -131,7 +131,11 @@ public function endSession(Session $session)
             break;
 
         // 6 → 12.5 ساعة
-        case ($hours >= 6 && $hours < 12 + $grace):
+        case ($hours >= 6 && $hours < 8 + $grace):
+            $billAmount = 100;
+            break;
+
+        case ($hours >= 8 && $hours < 12 + $grace):
             $billAmount = 120;
             break;
 
@@ -170,7 +174,7 @@ public function check($id)
     $duration = $checkIn->diff($checkOut);
     // عدد الساعات كفواصل (مثال: 1.5 ساعة)
     $hoursFloat = ($duration->days * 24) + $duration->h + ($duration->i / 60);
-    $grace = 0.5;
+    $grace = 0.25;
     // حساب الفاتورة للسيشن (نفس المنطق اللي عندك)
     switch (true) {
 
@@ -185,8 +189,12 @@ public function check($id)
             break;
     
         // 6 → 12.5
-        case ($hoursFloat >= 6 && $hoursFloat < (12 + $grace)):
+        case ($hoursFloat >= 6 && $hoursFloat < (8 + $grace)):
             $bill = 100;
+            break;
+
+        case ($hoursFloat >= 8 && $hoursFloat < (12 + $grace)):
+            $bill = 120;
             break;
     
         // 12.5 → 24
