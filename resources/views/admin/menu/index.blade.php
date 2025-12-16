@@ -58,7 +58,7 @@
                 <form onclick="return confirm('Delete this item?')" class="inline" method="POST" action="{{ route('admin.menu.destroy', $it->id) }}">
                   @csrf
                   @method('DELETE')
-                  <!-- <button class="btn ghost" type="submit">Delete</button> -->
+                  <button class="btn ghost" type="submit">Delete</button>
                 </form>
               </td>
             </tr>
