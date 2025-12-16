@@ -11,7 +11,7 @@ class MenuItemController extends Controller
     // Show list (admin view)
     public function index()
     {
-        $items = MenuItem::orderBy('created_at','desc')->get();
+        $items = MenuItem::orderBy('category', 'asc')->get();
         return view('admin.menu.index', compact('items'));
     }
 
