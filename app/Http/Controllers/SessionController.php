@@ -89,6 +89,7 @@ class SessionController extends Controller
         'table_number' => 1, // أو خليه يجي من request
         'check_in' => now(),
         'rate_per_hour' => 60,
+        'people_count' => 1,
     ]);
 
     return response()->json([
@@ -149,7 +150,7 @@ public function endSession(Session $session)
             $billAmount = 1;
             break;
     }
-
+    $billAmount = $billAmount * $session->people_count;
 
     // حدث بيانات السيشن
     $session->update([
@@ -207,6 +208,7 @@ public function check($id)
             $bill = 1;
             break;
     }
+    $bill = $bill * $session->people_count;
 
     // نجيب كل الأوردرات (ما عدا الملغية) عشان نعرض تفاصيلها،
     // لكن لما نحسب المجموع هنأخد بس ال Done
@@ -247,6 +249,18 @@ public function check($id)
     return view('gest.check', compact('session', 'duration', 'bill', 'drinksTotal', 'drinksDetails', 'grandTotal'));
 }
 
+public function updatePeople(Request $request, Session $session)
+{
+    $request->validate([
+        'people_count' => 'required|integer|min:1|max:20',
+    ]);
+
+    $session->update([
+        'people_count' => $request->people_count
+    ]);
+
+    return response()->json(['success' => true]);
+}
 
 
 

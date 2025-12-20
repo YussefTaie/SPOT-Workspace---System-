@@ -16,7 +16,8 @@ class Session extends Model
         'check_out',
         'duration_minutes',
         'rate_per_hour',
-        'bill_amount'
+        'bill_amount',
+        'people_count',
     ];
 
     public function guest()

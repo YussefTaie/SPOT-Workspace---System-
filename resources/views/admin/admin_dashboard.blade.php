@@ -128,6 +128,7 @@
             <th>Guest Name</th>
             <th>Check-in</th>
             <th>Duration</th>
+            <th>People</th>
             <th>Status</th>
             <th style="text-align:right;">Actions</th>
           </tr>
@@ -144,6 +145,15 @@
       $duration = $checkIn->diff($now);
       echo $duration->h . 'h ' . $duration->i . 'm';
       @endphp
+        </td>
+        <td data-label="People">
+          <input 
+            type="number"
+            min="1"
+            value="{{ $session->people_count }}"
+            style="width:60px;padding:4px;border-radius:6px;border:1px solid #ccc;"
+            onchange="updatePeople({{ $session->id }}, this.value)"
+          >
         </td>
         <td data-label="Status"><span class="status active">In Session</span></td>
         <td data-label="Actions" style="text-align:right;">
@@ -343,5 +353,30 @@
 
 
   </script>
+  <script>
+function updatePeople(sessionId, value) {
+  if (value < 1) {
+    alert('People count must be at least 1');
+    return;
+  }
+
+  fetch(`/admin/sessions/${sessionId}/people`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ people_count: value })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data.success) {
+      alert('Failed to update people count');
+    }
+  })
+  .catch(() => alert('Error updating people count'));
+}
+</script>
+
 </body>
 </html>
