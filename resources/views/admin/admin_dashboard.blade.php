@@ -129,6 +129,8 @@
             <th>Check-in</th>
             <th>Duration</th>
             <th>People</th>
+            <th>Type</th>
+            <th>Room</th>
             <th>Status</th>
             <th style="text-align:right;">Actions</th>
           </tr>
@@ -155,6 +157,30 @@
             onchange="updatePeople({{ $session->id }}, this.value)"
           >
         </td>
+        <td data-label="Type">
+  <select
+    onchange="updateSessionType({{ $session->id }}, this.value)"
+    style="padding:4px;border-radius:6px;"
+  >
+    <option value="regular" {{ $session->session_type === 'regular' ? 'selected' : '' }}>Regular</option>
+    <option value="room" {{ $session->session_type === 'room' ? 'selected' : '' }}>Room</option>
+  </select>
+</td>
+<td data-label="Room">
+  <select
+    onchange="updateRoom({{ $session->id }}, this.value)"
+    {{ $session->session_type !== 'room' ? 'disabled' : '' }}
+    style="padding:4px;border-radius:6px;"
+  >
+    <option value="">—</option>
+    <option value="1" {{ $session->room_number == 1 ? 'selected' : '' }}>Room 1</option>
+    <option value="2" {{ $session->room_number == 2 ? 'selected' : '' }}>Room 2</option>
+    <option value="3" {{ $session->room_number == 3 ? 'selected' : '' }}>Room 3</option>
+    <option value="4" {{ $session->room_number == 4 ? 'selected' : '' }}>Room 4</option>
+  </select>
+</td>
+
+
         <td data-label="Status"><span class="status active">In Session</span></td>
         <td data-label="Actions" style="text-align:right;">
           <button class="btn" onclick="window.location.href='{{ url('/profile/' . $session->guest->id) }}'">View Profile</button>
@@ -197,6 +223,7 @@
       <th>Guest Name</th>
       <th>Session Time</th>
       <th>Duration</th>
+      <th>Type</th>
       <th>Bill</th>
       <th>Status</th>
       <th style="text-align:right;">Actions</th>
@@ -216,7 +243,7 @@
   @endphp
 
 <tr style="background: #efefef;">
-  <td colspan="6" style="text-align:center; font-weight:bold; color:#333;">
+  <td colspan="10" style="text-align:center; font-weight:bold; color:#333;">
     📅 {{ \Carbon\Carbon::parse($date)->translatedFormat('l, d M Y') }}
     <span style="margin-left:12px; font-weight:600; color:#111;">— Total: {{ number_format($dayTotal, 2) }} EGP</span>
   </td>
@@ -240,6 +267,13 @@
           $duration = $checkIn->diff($checkOut);
           echo $duration->h . 'h ' . $duration->i . 'm';
         @endphp
+      </td>
+      <td data-label="Type">
+        @if($session->session_type === 'room')
+          Room {{ $session->room_number }}
+        @else
+          Regular
+        @endif
       </td>
 
       <td data-label="Bill">{{ number_format($session->bill_amount, 2) }} EGP</td>
@@ -272,16 +306,34 @@
     <input type="text" id="hiddenScanner" style="opacity:0;position:absolute;left:-9999px;">
     <!-- <input type="text" id="hiddenScanner" > -->
 
-  <script>
+  <!-- <script>
     const scannerInput = document.getElementById('hiddenScanner');
+    let scannerEnabled = true;
 
     // حافظ على الفوكس
     function keepFocus() {
-      scannerInput.focus();
+        if (scannerEnabled) {
+            scannerInput.focus();
+        }
     }
+    
     setInterval(keepFocus, 1000);
     keepFocus();
 
+      document.addEventListener('focusin', function (e) {
+    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
+      scannerEnabled = false;
+    }
+  });
+
+  document.addEventListener('focusout', function (e) {
+    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
+      setTimeout(() => {
+        scannerEnabled = true;
+        scannerInput.focus();
+      }, 300);
+    }
+  });
     // إضافة بسيطة مع debounce بدلاً من dispatch فوري
     let dispatchTimeout = null;
     scannerInput.addEventListener('input', function () {
@@ -324,7 +376,7 @@
     });
 });
 
-</script>
+</script> -->
 
 
 
@@ -377,6 +429,114 @@ function updatePeople(sessionId, value) {
   .catch(() => alert('Error updating people count'));
 }
 </script>
+<script>
+function updateSessionType(sessionId, value) {
+  fetch(`/admin/sessions/${sessionId}/type`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ session_type: value })
+  }).then(() => location.reload());
+}
+
+function updateRoom(sessionId, value) {
+  fetch(`/admin/sessions/${sessionId}/room`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ room_number: value })
+  });
+}
+</script>
+<script>
+function updateSessionType(sessionId, value) {
+  fetch(`/admin/sessions/${sessionId}/type`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ session_type: value })
+  }).then(() => {
+    location.reload(); // مؤقتًا
+  });
+}
+</script>
+
+<script>
+let scanBuffer = '';
+let scanTimeout = null;
+
+document.addEventListener('keydown', function (e) {
+
+  const activeEl = document.activeElement;
+
+  // ❌ تجاهل الكتابة في inputs العادية
+  // ✅ اسمح بالـ hiddenScanner
+  if (
+    activeEl &&
+    activeEl.tagName === 'INPUT' &&
+    activeEl.id !== 'hiddenScanner'
+  ) {
+    return;
+  }
+
+  if (activeEl && activeEl.tagName === 'SELECT') {
+    return;
+  }
+
+  // أغلب scanners بتبعت Enter في الآخر
+  if (e.key === 'Enter') {
+    if (scanBuffer.length > 3) {
+      handleScan(scanBuffer);
+    }
+    scanBuffer = '';
+    return;
+  }
+
+  // ناخد الحروف بس
+  if (e.key.length === 1) {
+    scanBuffer += e.key;
+  }
+
+  clearTimeout(scanTimeout);
+  scanTimeout = setTimeout(() => {
+    scanBuffer = '';
+  }, 120);
+});
+
+function handleScan(rawValue) {
+  console.log('RAW SCAN:', rawValue);
+
+  const match = rawValue.match(/=(\d+)/);
+  if (!match) {
+    alert('Invalid QR Code');
+    return;
+  }
+
+  const guestId = match[1];
+
+  console.log('GUEST ID:', guestId);
+
+  fetch(`/scan?guest_id=${guestId}`)
+    .then(res => res.json())
+    .then(data => {
+      console.log('SERVER RESPONSE:', data);
+      if (data.status === 'success') {
+        location.reload();
+      } else {
+        alert('⚠️ ' + data.message);
+      }
+    })
+    .catch(() => alert('Scan failed'));
+}
+</script>
+
+
 
 </body>
 </html>

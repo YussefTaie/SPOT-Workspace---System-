@@ -18,6 +18,8 @@ class Session extends Model
         'rate_per_hour',
         'bill_amount',
         'people_count',
+        'session_type',
+        'room_number',
     ];
 
     public function guest()

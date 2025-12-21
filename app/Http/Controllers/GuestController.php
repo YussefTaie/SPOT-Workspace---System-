@@ -19,6 +19,13 @@ class GuestController extends Controller
     // آخر جلسة نشطة
     $currentSession = $guest->sessions()->latest()->first();
 
+    $liveBill = null;
+
+    if ($currentSession && !$currentSession->check_out) {
+        $liveBill = app(\App\Http\Controllers\SessionController::class)->calculateSessionBill($currentSession);
+    }
+
+
     $durationFormatted = '-';
     $currentBill = 0;
 
@@ -33,7 +40,7 @@ class GuestController extends Controller
         // حساب عدد الساعات كـ float
         $hours = $duration->days * 24 + $duration->h + ($duration->i / 60);
 
-        $grace = 0.25; // 30 دقيقة
+        $grace = 0.5; // 30 دقيقة
 
         switch (true) {
         
@@ -108,6 +115,7 @@ class GuestController extends Controller
         'duration' => $durationFormatted,
         'rate' => $currentSession?->rate . ' EGP',
         'current_bill' => $currentBill . ' EGP',
+        'live_bill' => $liveBill ? $liveBill . ' EGP' : '-',
 
          // 🔹 أضف القيم الجديدة هنا
         'last_activity' => $lastActivity,

@@ -117,6 +117,8 @@
     Route::prefix('admin')->middleware(['auth:admin', 'is_admin'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
         Route::post('/sessions/{session}/people', [SessionController::class, 'updatePeople']);
+        Route::post('/sessions/{session}/type', [SessionController::class, 'updateType']);
+        Route::post('/sessions/{session}/room', [SessionController::class, 'updateRoom']);
         // إدارة المنيو بواسطة الأدمن
         Route::get('/menu', [App\Http\Controllers\Admin\MenuItemController::class, 'index'])->name('admin.menu.index');
         Route::get('/menu/create', [App\Http\Controllers\Admin\MenuItemController::class, 'create'])->name('admin.menu.create');

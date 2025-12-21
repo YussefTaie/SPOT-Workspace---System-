@@ -4,8 +4,90 @@
   <meta charset="utf-8">
   <title>Check - {{ $session->guest->fullname ?? 'Guest' }}</title>
   <style>
+  /* إعدادات الطباعة لحرارة 80mm */
+  @media print {
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+
+    body {
+      width: 80mm;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 72mm; /* سيب هامش بسيط */
+      margin: 0 auto;
+    }
+
+    .print-btn {
+      display: none; /* اخفي زرار الطباعة */
+    }
+  }
+
+  /* ستايل العرض العادي */
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+  }
+
+  .container {
+    max-width: 420px;
+    margin: auto;
+    padding: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 4px 0;
+    border-bottom: 1px dashed #ccc;
+  }
+
+  .right {
+    text-align: right;
+  }
+
+  .label {
+    font-weight: bold;
+  }
+
+  h2, h3 {
+    text-align: center;
+    margin: 6px 0;
+  }
+
+  .total {
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .muted {
+    font-size: 11px;
+    color: #666;
+  }
+
+  .print-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    background: #000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+
+  <style>
     /* بسيط علشان الطباعه تكون كويسة — اضف ستايل الموقع لو حابب */
-    body{font-family:Arial, Helvetica, sans-serif;color:#111;padding: 18px 500px;}
+    body{font-family:Arial, Helvetica, sans-serif;color:#111;}
     .info{margin-bottom:6px}
     .label{font-weight:700;margin-right:6px}
     table{width:100%;border-collapse:collapse;margin-top:12px}

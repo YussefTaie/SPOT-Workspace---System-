@@ -196,7 +196,8 @@
           </div>
           <div class="stat">
             <!-- <div class="num">{{ $userData['total_expenses'] }}</div> -->
-            <div class="num">{{ $userData['current_bill'] }}</div>
+            <div class="num">{{ $userData['live_bill'] }}</div>
+
             <div class="label">Expenses</div>
           </div>
         </div>

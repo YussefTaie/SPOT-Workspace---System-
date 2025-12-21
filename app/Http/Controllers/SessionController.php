@@ -90,6 +90,8 @@ class SessionController extends Controller
         'check_in' => now(),
         'rate_per_hour' => 60,
         'people_count' => 1,
+        'session_type' => 'regular',
+        'room_number' => null,
     ]);
 
     return response()->json([
@@ -110,47 +112,42 @@ public function endSession(Session $session)
     $durationMinutes = $checkIn->diffInMinutes($checkOut);
 
     // احسب الفاتورة بناءً على rate_per_hour
-    $hours = $durationMinutes / 60;
-    $billAmount = 0;
-    $grace = 0.25;
+    // $hours = $durationMinutes / 60;
+    // $billAmount = 0;
+    // $grace = 0.25;
 
-    switch (true) {
+    // switch (true) {
 
-        // 0 → 1.5 ساعة
-        case ($hours < 1 + $grace):
-            $billAmount = 25;
-            break;
+    //     case ($hours < 1 + $grace):
+    //         $billAmount = 25;
+    //         break;
 
-        // 1 → 3.5 ساعة
-        case ($hours >= 1 && $hours < 3 + $grace):
-            $billAmount = 50;
-            break;
+    //     case ($hours >= 1 && $hours < 3 + $grace):
+    //         $billAmount = 50;
+    //         break;
 
-        // 3 → 6.5 ساعة
-        case ($hours >= 3 && $hours < 6 + $grace):
-            $billAmount = 80;
-            break;
+    //     case ($hours >= 3 && $hours < 6 + $grace):
+    //         $billAmount = 80;
+    //         break;
 
-        // 6 → 12.5 ساعة
-        case ($hours >= 6 && $hours < 8 + $grace):
-            $billAmount = 100;
-            break;
+    //     case ($hours >= 6 && $hours < 8 + $grace):
+    //         $billAmount = 100;
+    //         break;
 
-        case ($hours >= 8 && $hours < 12 + $grace):
-            $billAmount = 120;
-            break;
+    //     case ($hours >= 8 && $hours < 12 + $grace):
+    //         $billAmount = 120;
+    //         break;
 
-        // أكتر من 12.5 ساعة = 150 جنيه
-        case ($hours >= 12 + $grace):
-            $billAmount = 150;
-            break;
+    //     case ($hours >= 12 + $grace && $hours <= 24):
+    //         $billAmount = 150;
+    //         break;
 
-        // للفاتورة اللي مالهاش سيشن
-        default:
-            $billAmount = 1;
-            break;
-    }
-    $billAmount = $billAmount * $session->people_count;
+    //     default:
+    //         $billAmount = 1;
+    //         break;
+    // }
+    // $billAmount = $billAmount * $session->people_count;
+    $billAmount = $this->calculateSessionBill($session);
 
     // حدث بيانات السيشن
     $session->update([
@@ -208,7 +205,8 @@ public function check($id)
             $bill = 1;
             break;
     }
-    $bill = $bill * $session->people_count;
+    // $bill = $bill * $session->people_count;
+    $bill = $this->calculateSessionBill($session);
 
     // نجيب كل الأوردرات (ما عدا الملغية) عشان نعرض تفاصيلها،
     // لكن لما نحسب المجموع هنأخد بس ال Done
@@ -262,7 +260,114 @@ public function updatePeople(Request $request, Session $session)
     return response()->json(['success' => true]);
 }
 
+public function updateType(Request $request, Session $session)
+{
+    $request->validate([
+        'session_type' => 'required|in:regular,room'
+    ]);
 
+    $session->update([
+        'session_type' => $request->session_type,
+        'room_number' => $request->session_type === 'regular' ? null : $session->room_number
+    ]);
+
+    return response()->json(['success' => true]);
+}
+
+public function updateRoom(Request $request, Session $session)
+{
+    $request->validate([
+        'room_number' => 'nullable|integer|in:1,2,3,4'
+    ]);
+
+    $session->update([
+        'room_number' => $request->room_number
+    ]);
+
+    return response()->json(['success' => true]);
+}
+
+
+public function calculateSessionBill(Session $session)
+{
+    // 1️⃣ احسب عدد الساعات
+    $checkIn = \Carbon\Carbon::parse($session->check_in);
+    $checkOut = $session->check_out
+        ? \Carbon\Carbon::parse($session->check_out)
+        : \Carbon\Carbon::now();
+
+    $duration = $checkIn->diff($checkOut);
+    $hours = ($duration->days * 24) + $duration->h + ($duration->i / 60);
+    $grace = 0.50;
+
+    $bill = 0;
+
+    // 2️⃣ Regular pricing (نفس الكود القديم حرفيًا)
+    if ($session->session_type === 'regular') {
+
+        switch (true) {
+            case ($hours < 1 + $grace):
+                $bill = 25;
+                break;
+            case ($hours >= 1 && $hours < 3 + $grace):
+                $bill = 50;
+                break;
+            case ($hours >= 3 && $hours < 6 + $grace):
+                $bill = 80;
+                break;
+            case ($hours >= 6 && $hours < 8 + $grace):
+                $bill = 100;
+                break;
+            case ($hours >= 8 && $hours < 12 + $grace):
+                $bill = 120;
+                break;
+            case ($hours >= 12 + $grace):
+                $bill = 150;
+                break;
+            default:
+                $bill = 1;
+        }
+
+        // 👈 regular بس هو اللي يتضرب في عدد الأشخاص
+        $bill = $bill * $session->people_count;
+    }
+
+    // 3️⃣ Room pricing (جديد – منفصل)
+    if ($session->session_type === 'room') {
+
+    $grace = 0.5; // ⏱️ نص ساعة سماح
+
+    $billableHours = floor($hours);
+
+    if (($hours - $billableHours) > $grace) {
+        $billableHours++;
+    }
+
+    $billableHours = max(1, $billableHours);
+
+    switch ($session->room_number) {
+
+        case 1:
+        case 2:
+            $bill = 200 + max(0, $billableHours - 1) * 150;
+            break;
+
+        case 3:
+            $bill = 250 + max(0, $billableHours - 1) * 200;
+            break;
+
+        case 4:
+            $bill = 350 + max(0, $billableHours - 1) * 300;
+            break;
+
+        default:
+            $bill = 0;
+    }
+}
+
+
+    return $bill;
+}
 
 
 
