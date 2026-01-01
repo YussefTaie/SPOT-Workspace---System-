@@ -31,4 +31,9 @@ class Session extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function subGuests()
+    {
+        return $this->hasMany(\App\Models\SubGuest::class);
+    }
 }

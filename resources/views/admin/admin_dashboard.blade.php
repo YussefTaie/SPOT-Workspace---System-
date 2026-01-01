@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <title>Spot | Admin Dashboard</title>
   <style>
     :root{
@@ -121,85 +123,221 @@
         </div>
       </div>
 
-      <!-- Active Guests Table -->
-      <table id="activeTable">
-        <thead>
-          <tr>
-            <th>Guest Name</th>
-            <th>Check-in</th>
-            <th>Duration</th>
-            <th>People</th>
-            <th>Type</th>
-            <th>Room</th>
-            <th>Status</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+  <!-- Active Guests Table -->
+<table id="activeTable">
+  <thead>
+    <tr>
+      <th>Guest Name</th>
+      <th>Check-in</th>
+      <th>Duration</th>
+      <th>People</th>
+      <th>Type</th>
+      <th>Room</th>
+      <th>Status</th>
+      <th style="text-align:right;">Actions</th>
+    </tr>
+  </thead>
+
+  <tbody>
     @foreach($activeSessions as $session)
       <tr>
-        <td data-label="Guest Name">{{ $session->guest->fullname }}</td>
-        <td data-label="Check-in">{{ \Carbon\Carbon::parse($session->check_in)->format('H:i') }}</td>
+
+        <td data-label="Guest Name">
+          {{ $session->guest->fullname }}
+        </td>
+
+        <td data-label="Check-in">
+          {{ \Carbon\Carbon::parse($session->check_in)->format('H:i') }}
+        </td>
+
         <td data-label="Duration" id="duration-{{ $session->id }}">
-      @php
-      $checkIn = \Carbon\Carbon::parse($session->check_in);
-      $now = \Carbon\Carbon::now();
-      $duration = $checkIn->diff($now);
-      echo $duration->h . 'h ' . $duration->i . 'm';
-      @endphp
+          @php
+            $checkIn = \Carbon\Carbon::parse($session->check_in);
+            $now = \Carbon\Carbon::now();
+            $duration = $checkIn->diff($now);
+            echo $duration->h . 'h ' . $duration->i . 'm';
+          @endphp
         </td>
+
+        {{-- People (Manage SubGuests) --}}
         <td data-label="People">
-          <input 
-            type="number"
-            min="1"
-            value="{{ $session->people_count }}"
-            style="width:60px;padding:4px;border-radius:6px;border:1px solid #ccc;"
-            onchange="updatePeople({{ $session->id }}, this.value)"
-          >
+          @if($session->session_type === 'regular')
+            <button
+              class="btn ghost"
+              id="people-count-{{ $session->id }}"
+              data-bs-toggle="modal"
+              data-bs-target="#subGuestsModal-{{ $session->id }}"
+            >
+              👥 {{ $session->subGuests->whereNull('left_at')->count() }}
+            </button>
+
+          @else
+            <span class="muted">—</span>
+          @endif
         </td>
+
+        {{-- Type --}}
         <td data-label="Type">
-  <select
-    onchange="updateSessionType({{ $session->id }}, this.value)"
-    style="padding:4px;border-radius:6px;"
-  >
-    <option value="regular" {{ $session->session_type === 'regular' ? 'selected' : '' }}>Regular</option>
-    <option value="room" {{ $session->session_type === 'room' ? 'selected' : '' }}>Room</option>
-  </select>
-</td>
-<td data-label="Room">
-  <select
-    onchange="updateRoom({{ $session->id }}, this.value)"
-    {{ $session->session_type !== 'room' ? 'disabled' : '' }}
-    style="padding:4px;border-radius:6px;"
-  >
-    <option value="">—</option>
-    <option value="1" {{ $session->room_number == 1 ? 'selected' : '' }}>Room 1</option>
-    <option value="2" {{ $session->room_number == 2 ? 'selected' : '' }}>Room 2</option>
-    <option value="3" {{ $session->room_number == 3 ? 'selected' : '' }}>Room 3</option>
-    <option value="4" {{ $session->room_number == 4 ? 'selected' : '' }}>Room 4</option>
-  </select>
-</td>
-
-
-        <td data-label="Status"><span class="status active">In Session</span></td>
-        <td data-label="Actions" style="text-align:right;">
-          <button class="btn" onclick="window.location.href='{{ url('/profile/' . $session->guest->id) }}'">View Profile</button>
-          <form action="{{ route('sessions.end', $session->id) }}" method="POST" style="display:inline;" onsubmit="return confirmEndSession();">
-            @csrf
-            <button type="submit" id="end" class="btn ghost">End Session</button>
-        </form>
-
-        <script>
-        function confirmEndSession() {
-            return confirm("Are you sure you want to end this session?");
-            
-        }
-        </script>
+          <select
+            onchange="updateSessionType({{ $session->id }}, this.value)"
+            style="padding:4px;border-radius:6px;"
+          >
+            <option value="regular" {{ $session->session_type === 'regular' ? 'selected' : '' }}>
+              Regular
+            </option>
+            <option value="room" {{ $session->session_type === 'room' ? 'selected' : '' }}>
+              Room
+            </option>
+          </select>
         </td>
+
+        {{-- Room --}}
+        <td data-label="Room">
+          <select
+            onchange="updateRoom({{ $session->id }}, this.value)"
+            {{ $session->session_type !== 'room' ? 'disabled' : '' }}
+            style="padding:4px;border-radius:6px;"
+          >
+            <option value="">—</option>
+            <option value="1" {{ $session->room_number == 1 ? 'selected' : '' }}>Room 1</option>
+            <option value="2" {{ $session->room_number == 2 ? 'selected' : '' }}>Room 2</option>
+            <option value="3" {{ $session->room_number == 3 ? 'selected' : '' }}>Room 3</option>
+            <option value="4" {{ $session->room_number == 4 ? 'selected' : '' }}>Room 4</option>
+          </select>
+        </td>
+
+        {{-- Status --}}
+        <td data-label="Status">
+          <span class="status active">In Session</span>
+        </td>
+
+        {{-- Actions --}}
+        <td data-label="Actions" style="text-align:right;">
+          <button
+            class="btn"
+            onclick="window.location.href='{{ url('/profile/' . $session->guest->id) }}'"
+          >
+            View Profile
+          </button>
+
+          <form
+            action="{{ route('sessions.end', $session->id) }}"
+            method="POST"
+            style="display:inline;"
+            onsubmit="return confirm('Are you sure you want to end this session?');"
+          >
+            @csrf
+            <button type="submit" class="btn ghost" id="end">
+              End Session
+            </button>
+          </form>
+        </td>
+
       </tr>
     @endforeach
-        </tbody>
-      </table>
+  </tbody>
+</table>
+@foreach($activeSessions as $session)
+  @if($session->session_type === 'regular')
+    <div
+      class="modal fade"
+      id="subGuestsModal-{{ $session->id }}"
+      tabindex="-1"
+    >
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title">
+              Manage Guests — {{ $session->guest->fullname }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+
+            {{-- Add Sub Guest --}}
+            <form
+              onsubmit="addSubGuest(event, {{ $session->id }})"
+              class="d-flex gap-2 mb-3"
+            >
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Sub guest name"
+                required
+                id="subguest-name-{{ $session->id }}"
+              >
+              <button class="btn btn-primary">
+                Add
+              </button>
+            </form>
+
+            {{-- Sub Guests Table --}}
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Duration</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($session->subGuests as $sg)
+                  @php
+                    $in = \Carbon\Carbon::parse($sg->joined_at);
+                    $out = $sg->left_at ? \Carbon\Carbon::parse($sg->left_at) : now();
+                    $diff = $in->diff($out);
+                  @endphp
+                  <tr
+                      id="subguest-row-{{ $sg->id }}"
+                      data-joined="{{ $sg->joined_at }}"
+                      data-left="{{ $sg->left_at }}"
+                    >
+
+                    <td>{{ $sg->name }}</td>
+                    <!-- <td>{{ $diff->h }}h {{ $diff->i }}m</td> -->
+                    
+                    <td class="sub-duration">0h 0m</td>
+                    <td class="sub-fee">25 EGP</td>
+                    
+                    <td>
+                      @if($sg->left_at)
+                        <span class="badge bg-secondary">Ended</span>
+                      @else
+                        <span class="badge bg-success">Active</span>
+                      @endif
+                    </td>
+                    <td>
+                      @if(!$sg->left_at)
+                        <button
+                          class="btn btn-sm btn-danger"
+                          onclick="endSubGuest({{ $sg->id }}, {{ $session->id }})"
+                        >
+                          End
+                        </button>
+                      @endif
+                    </td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+<div class="text-end mt-3 fw-bold">
+  Total Session Fee:
+  <span id="session-total-{{ $session->id }}">0 EGP</span>
+</div>
+
+          </div>
+
+        </div>
+      </div>
+      
+    </div>
+  @endif
+@endforeach
+
       
       <script>
   setInterval(() => {
@@ -536,6 +674,216 @@ function handleScan(rawValue) {
 }
 </script>
 
+<script>
+function addSubGuest(e, sessionId) {
+  e.preventDefault();
+
+  const input = document.getElementById(`subguest-name-${sessionId}`);
+  const name = input.value.trim();
+  if (!name) return;
+
+  fetch(`/admin/sessions/${sessionId}/sub-guests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ name })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status !== 'success') return alert('Failed');
+
+    location.reload(); // مؤقتًا — هنشيله بعدين
+  });
+  updateSubGuestsTimers();
+
+}
+
+function endSubGuest(subGuestId, sessionId) {
+  if (!confirm('Are you sure you want to end this guest?')) return;
+
+  fetch(`/admin/sub-guests/${subGuestId}/end`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    }
+  })
+  .then(res => res.json())
+  .then(() => {
+    location.reload(); // مؤقتًا
+  });
+  updateSubGuestsTimers();
+}
+</script>
+
+<script>
+function addSubGuest(e, sessionId) {
+  e.preventDefault();
+
+  const input = document.getElementById(`subguest-name-${sessionId}`);
+  const name = input.value.trim();
+  if (!name) return;
+
+  fetch(`/admin/sessions/${sessionId}/sub-guests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ name })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status !== 'success') {
+      alert('Failed to add guest');
+      return;
+    }
+
+    const sg = data.sub_guest;
+
+    const tableBody = document.querySelector(
+      `#subGuestsModal-${sessionId} tbody`
+    );
+
+    const row = document.createElement('tr');
+    row.dataset.joined = sg.joined_at;
+    row.dataset.left = '';
+
+    row.id = `subguest-row-${sg.id}`;
+    row.innerHTML = `
+  <td>${sg.name}</td>
+  <td class="sub-duration">0h 0m</td>
+  <td class="sub-fee">25 EGP</td>
+  <td><span class="badge bg-success">Active</span></td>
+  <td>
+    <button
+      class="btn btn-sm btn-danger"
+      onclick="endSubGuest(${sg.id}, ${sessionId})"
+    >
+      End
+    </button>
+  </td>
+`;
+
+
+    tableBody.appendChild(row);
+
+    // Update counter
+    const counter = document.getElementById(`people-count-${sessionId}`);
+    const current = parseInt(counter.textContent.replace(/\D/g, '')) || 0;
+    counter.innerHTML = `👥 ${current + 1}`;
+
+    input.value = '';
+  })
+  .catch(() => alert('Error adding guest'));
+}
+
+function endSubGuest(subGuestId, sessionId) {
+  if (!confirm('Are you sure you want to end this guest?')) return;
+
+  fetch(`/admin/sub-guests/${subGuestId}/end`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status !== 'success') {
+      alert('Failed to end guest');
+      return;
+    }
+
+    const row = document.getElementById(`subguest-row-${subGuestId}`);
+    if (!row) return;
+
+    // 🟢 1) ثبت وقت الخروج عشان التايمر يقف
+    row.dataset.left = new Date().toISOString();
+
+    // 🟢 2) Update status (العمود الرابع بعد إضافة Fee)
+    row.children[3].innerHTML =
+      '<span class="badge bg-secondary">Ended</span>';
+
+    // 🟢 3) شيل زر End (العمود الخامس)
+    row.children[4].innerHTML = '';
+
+    // 🟢 4) Update people counter
+    const counter = document.getElementById(`people-count-${sessionId}`);
+    const current = parseInt(counter.textContent.replace(/\D/g, '')) || 1;
+    counter.innerHTML = `👥 ${Math.max(0, current - 1)}`;
+  })
+  .catch(() => alert('Error ending guest'));
+}
+
+</script>
+
+
+<script>
+function calculateFee(hours) {
+  const grace = 0.5;
+
+  if (hours < 1 + grace) return 25;
+  if (hours < 3 + grace) return 50;
+  if (hours < 6 + grace) return 80;
+  if (hours < 8 + grace) return 100;
+  if (hours < 12 + grace) return 120;
+  return 150;
+}
+
+function updateSubGuestsTimers() {
+
+  const totals = {}; // total per session
+
+  document.querySelectorAll('[id^="subguest-row-"]').forEach(row => {
+
+    const joinedAt = row.dataset.joined;
+    const leftAt = row.dataset.left;
+    if (!joinedAt) return;
+
+    const start = new Date(joinedAt);
+    const end = leftAt ? new Date(leftAt) : new Date();
+
+    const diffMs = end - start;
+    if (diffMs < 0) return;
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const hoursFloat = hours + (minutes / 60);
+
+    const durationCell = row.querySelector('.sub-duration');
+    const feeCell = row.querySelector('.sub-fee');
+
+    const fee = calculateFee(hoursFloat);
+
+    if (durationCell) {
+      durationCell.textContent = `${hours}h ${minutes}m`;
+    }
+
+    if (feeCell) {
+      feeCell.textContent = fee + ' EGP';
+    }
+
+    // 👇 نجمع التوتال حسب السيشن
+    const sessionId = row.closest('.modal').id.replace('subGuestsModal-', '');
+    totals[sessionId] = (totals[sessionId] || 0) + fee;
+  });
+
+  // 👇 نحدث التوتال في الـ UI
+  for (const sessionId in totals) {
+    const totalEl = document.getElementById(`session-total-${sessionId}`);
+    if (totalEl) {
+      totalEl.textContent = totals[sessionId] + ' EGP';
+    }
+  }
+}
+
+
+
+setInterval(updateSubGuestsTimers, 60000);
+updateSubGuestsTimers();
+</script>
 
 
 </body>

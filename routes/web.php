@@ -119,6 +119,13 @@
         Route::post('/sessions/{session}/people', [SessionController::class, 'updatePeople']);
         Route::post('/sessions/{session}/type', [SessionController::class, 'updateType']);
         Route::post('/sessions/{session}/room', [SessionController::class, 'updateRoom']);
+            // SubGuests management
+        Route::post('/sessions/{session}/sub-guests', [SessionController::class, 'addSubGuest'])
+        ->name('admin.sessions.subguests.add');
+
+        Route::post('/sub-guests/{subGuest}/end', [SessionController::class, 'endSubGuest'])
+        ->name('admin.sessions.subguests.end');
+
         // إدارة المنيو بواسطة الأدمن
         Route::get('/menu', [App\Http\Controllers\Admin\MenuItemController::class, 'index'])->name('admin.menu.index');
         Route::get('/menu/create', [App\Http\Controllers\Admin\MenuItemController::class, 'create'])->name('admin.menu.create');

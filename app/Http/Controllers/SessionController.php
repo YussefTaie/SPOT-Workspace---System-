@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Session;
 use App\Models\Guest;
+use App\Models\SubGuest;
 use Illuminate\Http\Request;
 
 
@@ -94,6 +95,11 @@ class SessionController extends Controller
         'room_number' => null,
     ]);
 
+    $session->subGuests()->create([
+    'name' => $guest->fullname,
+    'joined_at' => now(),
+    ]);
+
     return response()->json([
         'status' => 'success',
         'message' => 'Guest checked in successfully',
@@ -147,7 +153,20 @@ public function endSession(Session $session)
     //         break;
     // }
     // $billAmount = $billAmount * $session->people_count;
+    if ($session->session_type === 'regular') {
+
+    // نقفل أي SubGuest لسه موجود
+    foreach ($session->subGuests()->whereNull('left_at')->get() as $sg) {
+        $sg->update(['left_at' => now()]);
+    }
+
+    $billAmount = $this->calculateRegularFromSubGuests($session);
+
+} else {
+    // room session تفضل زي ما هي
     $billAmount = $this->calculateSessionBill($session);
+}
+
 
     // حدث بيانات السيشن
     $session->update([
@@ -158,6 +177,62 @@ public function endSession(Session $session)
 
     return redirect()->back()->with('success', 'Session ended successfully!');
 }
+
+public function addSubGuest(Request $request, Session $session)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+    ]);
+
+    // ممنوع إضافة SubGuest لو السيشن Room
+    if ($session->session_type === 'room') {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Sub guests are not allowed in room sessions'
+        ], 422);
+    }
+
+    $subGuest = $session->subGuests()->create([
+        'name' => $request->name,
+        'joined_at' => now(),
+    ]);
+
+    // تحديث people_count (لسه مؤقت)
+    $session->update([
+        'people_count' => $session->subGuests()->active()->count()
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'sub_guest' => $subGuest
+    ]);
+}
+
+public function endSubGuest(SubGuest $subGuest)
+{
+    if ($subGuest->left_at !== null) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Sub guest already ended'
+        ], 422);
+    }
+
+    $subGuest->update([
+        'left_at' => now(),
+    ]);
+
+    // تحديث people_count
+    $session = $subGuest->session;
+    $session->update([
+        'people_count' => $session->subGuests()->active()->count()
+    ]);
+
+    return response()->json([
+        'status' => 'success'
+    ]);
+}
+
+
 
 
 
@@ -206,7 +281,21 @@ public function check($id)
             break;
     }
     // $bill = $bill * $session->people_count;
+    // $bill = $this->calculateSessionBill($session);
+    if ($session->session_type === 'regular') {
+
+    // اقفل أي SubGuest لسه Active (للمعاينة بس)
+    foreach ($session->subGuests->whereNull('left_at') as $sg) {
+        $sg->left_at = now();
+    }
+
+    $bill = $this->calculateRegularFromSubGuests($session);
+
+} else {
+    // room session زي ما هي
     $bill = $this->calculateSessionBill($session);
+}
+
 
     // نجيب كل الأوردرات (ما عدا الملغية) عشان نعرض تفاصيلها،
     // لكن لما نحسب المجموع هنأخد بس ال Done
@@ -244,7 +333,46 @@ public function check($id)
 
     $grandTotal = round($bill + $drinksTotal, 2);
 
-    return view('gest.check', compact('session', 'duration', 'bill', 'drinksTotal', 'drinksDetails', 'grandTotal'));
+    $subGuestsBreakdown = [];
+
+if ($session->session_type === 'regular') {
+
+    foreach ($session->subGuests as $sg) {
+
+        $in  = \Carbon\Carbon::parse($sg->joined_at);
+        $out = $sg->left_at
+            ? \Carbon\Carbon::parse($sg->left_at)
+            : \Carbon\Carbon::now();
+
+        $diff = $in->diff($out);
+        $hours = ($diff->days * 24) + $diff->h + ($diff->i / 60);
+        $grace = 0.5;
+
+        // نفس أسعار regular
+        if ($hours < 1 + $grace) {
+            $price = 25;
+        } elseif ($hours < 3 + $grace) {
+            $price = 50;
+        } elseif ($hours < 6 + $grace) {
+            $price = 80;
+        } elseif ($hours < 8 + $grace) {
+            $price = 100;
+        } elseif ($hours < 12 + $grace) {
+            $price = 120;
+        } else {
+            $price = 150;
+        }
+
+        $subGuestsBreakdown[] = [
+            'name'     => $sg->name,
+            'duration' => $diff->h . 'h ' . $diff->i . 'm',
+            'price'    => $price,
+        ];
+    }
+}
+
+
+    return view('gest.check', compact('session', 'duration', 'bill', 'drinksTotal', 'drinksDetails', 'grandTotal', 'subGuestsBreakdown'));
 }
 
 public function updatePeople(Request $request, Session $session)
@@ -367,6 +495,62 @@ public function calculateSessionBill(Session $session)
 
 
     return $bill;
+}
+
+public function calculateRegularFromSubGuests(Session $session)
+{
+    $total = 0;
+
+    // نجيب بس الـ sub guests اللي اتقفلوا
+    $subGuests = $session->subGuests()
+        ->whereNotNull('left_at')
+        ->get();
+
+    foreach ($subGuests as $subGuest) {
+
+        $checkIn = \Carbon\Carbon::parse($subGuest->joined_at);
+        $checkOut = \Carbon\Carbon::parse($subGuest->left_at);
+
+        $duration = $checkIn->diff($checkOut);
+        $hours = ($duration->days * 24) + $duration->h + ($duration->i / 60);
+        $grace = 0.50;
+
+        $bill = 0;
+
+        // 🔴 نفس أسعار regular الحالية حرفيًا
+        switch (true) {
+            case ($hours < 1 + $grace):
+                $bill = 25;
+                break;
+
+            case ($hours >= 1 && $hours < 3 + $grace):
+                $bill = 50;
+                break;
+
+            case ($hours >= 3 && $hours < 6 + $grace):
+                $bill = 80;
+                break;
+
+            case ($hours >= 6 && $hours < 8 + $grace):
+                $bill = 100;
+                break;
+
+            case ($hours >= 8 && $hours < 12 + $grace):
+                $bill = 120;
+                break;
+
+            case ($hours >= 12 + $grace):
+                $bill = 150;
+                break;
+
+            default:
+                $bill = 1;
+        }
+
+        $total += $bill;
+    }
+
+    return $total;
 }
 
 

@@ -108,6 +108,30 @@
     <div class="info"><span class="label">Check-out Time:</span> {{ $session->check_out ? \Carbon\Carbon::parse($session->check_out)->format('d/m/Y H:i') : \Carbon\Carbon::now()->format('d/m/Y H:i') }}</div>
     <div class="info"><span class="label">Duration:</span> {{ $duration->h }}h {{ $duration->i }}m</div>
 
+    <h3 style="margin-top:16px">Session Breakdown</h3>
+
+@if(!empty($subGuestsBreakdown))
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th class="right">Time</th>
+      <th class="right">Fee</th>
+    </tr>
+  </thead>
+  <tbody>
+    @foreach($subGuestsBreakdown as $sg)
+      <tr>
+        <td>{{ $sg['name'] }}</td>
+        <td class="right">{{ $sg['duration'] }}</td>
+        <td class="right">{{ $sg['price'] }} EGP</td>
+      </tr>
+    @endforeach
+  </tbody>
+</table>
+@endif
+
+
     <h3 style="margin-top:16px">Drinks</h3>
 
 {{-- احسب إجمالي المشروبات اللي خلصت فعلاً (status = Done) --}}
