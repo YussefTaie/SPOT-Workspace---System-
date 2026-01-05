@@ -6,11 +6,11 @@
   <title>Admin — Manage Menu</title>
   <style>
     /* استخدمت نفس ستايل المشروع باختصار */
-    :root{ --card-radius:12px; --muted:#6b7280; --accent:#7c3aed; }
+    :root{ --card-radius:12px; --muted:#6b7280; --accent:#E0AA3E; }
     body{font-family:Inter,Arial;margin:18px;background:#f3f4f6;color:#111}
     .wrap{max-width:1100px;margin:0 auto}
     .card{background:#fff;padding:16px;border-radius:var(--card-radius);box-shadow:0 6px 20px rgba(0,0,0,0.06)}
-    .btn{background:linear-gradient(90deg,var(--accent),#a78bfa);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;text-decoration: none;}
+    .btn{background:linear-gradient(90deg,var(--accent));color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;text-decoration: none;}
     .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.08);color:#333;text-decoration: none;}
     table{width:100%;border-collapse:collapse;margin-top:12px}
     th,td{padding:10px;text-align:left;border-bottom:1px solid rgba(0,0,0,0.04)}

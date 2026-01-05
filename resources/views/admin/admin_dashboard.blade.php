@@ -11,7 +11,7 @@
       --bg:#f9fafb;
       --card:#ffffff;
       --muted:#6b7280;
-      --accent:#7c3aed;
+      --accent:#E0AA3E;
       --glass: rgba(0,0,0,0.04);
       --glass-2: rgba(0,0,0,0.02);
       --success:#10b981;
@@ -41,7 +41,7 @@
       padding:6px 12px;
       border-radius:10px;
       border:0;
-      background:linear-gradient(90deg,var(--accent),#a78bfa);
+      background:linear-gradient(90deg,var(--accent));
       color:white;
       text-decoration:none;
       cursor:pointer;

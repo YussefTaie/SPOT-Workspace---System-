@@ -9,7 +9,7 @@
       --bg:#f9fafb; /* light background */
       --card:#ffffff; /* white card background */
       --muted:#6b7280; /* gray-500 */
-      --accent:#7c3aed; /* violet */
+      --accent:#E0AA3E; /* violet */
       --glass: rgba(0,0,0,0.04);
       --glass-2: rgba(0,0,0,0.02);
       --success:#10b981;
@@ -34,7 +34,7 @@
 
     /* header */
     .header{display:flex;align-items:center;gap:12px;background:var(--glass);padding:12px;border-radius:12px; color: #1f2937;}
-    .avatar{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#a78bfa);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:white;}
+    .avatar{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:white;}
     .user-info h2{margin:0;font-size:18px}
     .user-info p{margin:0;color:var(--muted);font-size:13px}
 
@@ -73,7 +73,7 @@
     .mini-card{flex:1;padding:10px;border-radius:10px;background:var(--glass); color: #1f2937;}
 
     /* actions */
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),#a78bfa);color:white;text-decoration:none;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent));color:white;text-decoration:none;cursor:pointer}
     .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.1); color: #374151;}
 
     /* responsive layout */

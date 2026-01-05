@@ -9,7 +9,7 @@
       --bg:#f3f4f6;
       --card:#ffffff;
       --muted:#6b7280;
-      --accent:#7c3aed;
+      --accent:#E0AA3E;
       --accent-2:#a78bfa;
       --glass: rgba(0,0,0,0.04);
       --glass-2: rgba(0,0,0,0.02);
@@ -34,14 +34,14 @@
     .wrap{max-width:var(--max-width);margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px}
     .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--glass);padding:12px;border-radius:12px}
     .brand{display:flex;align-items:center;gap:12px}
-    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent));display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px}
     .brand h1{margin:0;font-size:18px}
     .brand p{margin:0;color:var(--muted);font-size:13px}
     .controls{display:flex;gap:10px;align-items:center}
     .search{display:flex;align-items:center;gap:8px;background:var(--card);padding:8px;border-radius:12px;box-shadow:0 6px 18px rgba(15,23,36,0.06)}
     .search input{border:0;outline:0;font-size:14px;background:transparent}
     .filter{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 12px;border-radius:10px;font-size:14px;cursor:pointer}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent));color:white;cursor:pointer}
     .content{display:grid;grid-template-columns:300px 1fr;gap:18px;margin-top:6px}
     .side{position:sticky;top:22px;align-self:start;display:flex;flex-direction:column;gap:12px}
     .card{background:var(--card);padding:14px;border-radius:var(--card-radius);box-shadow:0 8px 24px rgba(15,23,36,0.06); color: #0f1724;}

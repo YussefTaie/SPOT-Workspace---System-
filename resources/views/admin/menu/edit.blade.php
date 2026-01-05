@@ -9,7 +9,7 @@
     .card{max-width:700px;margin:0 auto;background:#fff;padding:18px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
     .form-row{margin-bottom:12px}
     .form-input{width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb}
-    .btn{background:linear-gradient(90deg,#7c3aed,#a78bfa);color:#fff;padding:10px 14px;border-radius:8px;border:0}
+    .btn{background:linear-gradient(90deg,#E0AA3E);color:#fff;padding:10px 14px;border-radius:8px;border:0}
     .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.08);color:#333}
     label{display:block;margin-bottom:6px;font-weight:600}
   </style>

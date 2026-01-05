@@ -96,7 +96,7 @@
     .right{text-align:right}
     .total{margin-top:14px;font-size:18px;font-weight:800;text-align:right}
     .muted{color:#6b7280;font-size:13px}
-    .print-btn{margin-top:12px;padding:8px 12px;border-radius:8px;background:#7c3aed;color:#fff;border:0;cursor:pointer}
+    .print-btn{margin-top:12px;padding:8px 12px;border-radius:8px;background:#E0AA3E;color:#fff;border:0;cursor:pointer}
   </style>
 </head>
 <body>

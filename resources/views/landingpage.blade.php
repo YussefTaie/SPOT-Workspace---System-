@@ -9,9 +9,10 @@
       --bg:#f9fafb;
       --card:#ffffff;
       --muted:#6b7280;
-      --accent:#7c3aed;
+      /* --accent:#7c3aed; */
+      --accent:#E0AA3E;
       --glass: rgba(0,0,0,0.04);
-      --accent-light:#a78bfa;
+      --accent-light:#28282B;
       --radius:14px;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto;
     }
@@ -27,6 +28,10 @@
       flex-direction: column;
     }
 
+    .spot-logo {
+      width: 70x;
+      height: 70px;
+    }
     header {
       width: 100%;
       background: var(--glass);
@@ -63,7 +68,7 @@
     }
 
     .btn-primary {
-      background: linear-gradient(90deg,var(--accent),var(--accent-light));
+      background: linear-gradient(90deg,var(--accent));
       color: white;
     }
 
@@ -185,7 +190,8 @@
 <body>
 
   <header>
-    <div class="logo">SPOT</div>
+    <!-- <div class="logo">SPOT</div> -->
+     <img class="spot-logo" src="{{ asset('images/logo.png') }}" alt="Logo">
     <div class="actions">
       <button class="btn btn-ghost" onclick="window.location='{{ route('guests.login') }}'">Log In</button>
       <button class="btn btn-primary" onclick="window.location='{{ route('guests.create') }}'">Register</button>
@@ -204,17 +210,17 @@
 
   <section class="showcase">
     <div class="card">
-      <img src="{{ asset('images/space.jpg') }}" alt="Workspace">
+      <img src="{{ asset('images/spot.jpg') }}" alt="Workspace">
       <h3>Modern & Cozy Spaces</h3>
       <p>Designed for productivity, with high-speed internet, comfort, and inspiring atmosphere.</p>
     </div>
     <div class="card">
-      <img src="{{ asset('images/cafe.jpg') }}" alt="Coffee">
-      <h3>Café Vibes</h3>
-      <p>Enjoy top-quality drinks and snacks while you focus on what matters most.</p>
+      <img src="{{ asset('images/meeting.jpg') }}" alt="Coffee">
+      <h3>Meeting Hub</h3>
+      <p>A comfortable space designed for focused discussions and productive collaboration.</p>
     </div>
     <div class="card">
-      <img src="{{ asset('images/metting.jpg') }}" alt="Community">
+      <img src="{{ asset('images/free.jpg') }}" alt="Community">
       <h3>Community & Events</h3>
       <p>Connect with like-minded creators, attend workshops, and build your network.</p>
     </div>
