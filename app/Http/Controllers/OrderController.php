@@ -136,34 +136,31 @@ public function accept(Request $request, Order $order)
 {
     if (! in_array(strtolower($order->status), ['inprogress','in_progress'])) {
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['status'=>'error','message'=>'Order not in progress'], 409);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Order not in progress'
+            ], 409);
         }
-        return redirect()->back()->with('error','Order not in progress');
+
+        return redirect()->back()->with('error', 'Order not in progress');
     }
 
-    DB::transaction(function() use ($order) {
-        $total = $order->total_price ?? ($order->unit_price * ($order->quantity ?? 1));
-
-        $order->status = 'Done';
-        if (Schema::hasColumn('orders', 'served_at')) {
-            $order->served_at = now();
-        }
-        $order->save();
-
-        if (Schema::hasColumn('sessions', 'bill_amount')) {
-            $order->session()->increment('bill_amount', $total);
-        } else {
-            $session = $order->session;
-            $session->bill_amount = ($session->bill_amount ?? 0) + $total;
-            $session->save();
-        }
-    });
+    DB::table('orders')
+        ->where('id', $order->id)
+        ->update([
+            'status' => 'Done'
+        ]);
 
     if ($request->ajax() || $request->wantsJson()) {
-        return response()->json(['status'=>'ok','message'=>'Order marked done']);
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'Order marked as done'
+        ]);
     }
-    return redirect()->back()->with('success','Order marked done and billed');
+
+    return redirect()->back()->with('success', 'Order marked as done');
 }
+
 
 
     /**
@@ -172,19 +169,24 @@ public function accept(Request $request, Order $order)
     public function cancel(Request $request, Order $order)
 {
     DB::transaction(function() use ($order) {
-        $wasDone = in_array(strtolower($order->status), ['done']);
+        $wasReceived = strtolower($order->status) === 'received';
         $total = $order->total_price ?? ($order->unit_price * ($order->quantity ?? 1));
 
         $order->status = 'Canceled';
         $order->save();
 
-        if ($wasDone && Schema::hasColumn('sessions', 'bill_amount')) {
+        if ($wasReceived && Schema::hasColumn('sessions', 'bill_amount')) {
             $order->session()->decrement('bill_amount', $total);
         }
     });
 
     if ($request->ajax() || $request->wantsJson()) {
-        return response()->json(['status'=>'ok','message'=>'Order canceled']);
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'Order canceled',
+            'refresh_guest' => true
+        ]);
+
     }
     return redirect()->back()->with('success','Order canceled');
 }
@@ -202,6 +204,38 @@ public function accept(Request $request, Order $order)
         $order->load(['session.guest','menuItem','staff']);
         return view('orders.show', compact('order'));
     }
+
+    public function markReceived(Request $request, Order $order)
+{
+    if (strtolower($order->status) !== 'done') {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Order not done yet'
+        ], 409);
+    }
+
+    DB::transaction(function () use ($order) {
+
+        $total = $order->total_price
+            ?? ($order->unit_price * ($order->quantity ?? 1));
+
+        DB::table('orders')
+            ->where('id', $order->id)
+            ->update([
+                'status' => 'Received'
+            ]);
+
+        DB::table('sessions')
+            ->where('id', $order->session_id)
+            ->increment('bill_amount', $total);
+    });
+
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Order received and billed'
+    ]);
+}
+
 
 
 

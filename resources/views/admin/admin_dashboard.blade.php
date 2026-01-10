@@ -104,6 +104,15 @@
     }
 
 
+    .search-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px;
+      border-radius:10px;
+      background:rgba(0,0,0,0.03);
+      margin-bottom:8px;
+    }
 
   </style>
 </head>
@@ -119,6 +128,8 @@
         <div style="display:flex;gap:8px;">
           <button class="btn" id="showActive">Active Guests</button>
           <button class="btn ghost" id="showHistory">Check-out History</button>
+          <button class="btn ghost" onclick="openHoldSessionsModal()">🕓 Hold Sessions</button>
+          <button class="btn ghost" onclick="openGuestSearchModal()">🔍 Search Guest</button>
           <button class="btn ghost" onclick="window.location.href='{{ route('admin.menu.index') }}'" id="menu">Edit Menu</button>
         </div>
       </div>
@@ -134,6 +145,7 @@
       <th>Type</th>
       <th>Room</th>
       <th>Status</th>
+      <th>Discount</th>
       <th style="text-align:right;">Actions</th>
     </tr>
   </thead>
@@ -210,6 +222,19 @@
         <td data-label="Status">
           <span class="status active">In Session</span>
         </td>
+        <td data-label="Discount">
+  <button
+    class="btn ghost"
+    onclick="openDiscountModal(
+      {{ $session->id }},
+      {{ $session->discount_value ?? 0 }},
+      @json($session->discount_reason)
+    )"
+  >
+    💸 {{ $session->discount_value ? '-' . $session->discount_value . ' EGP' : 'Set' }}
+  </button>
+</td>
+
 
         {{-- Actions --}}
         <td data-label="Actions" style="text-align:right;">
@@ -324,10 +349,35 @@
                 @endforeach
               </tbody>
             </table>
-<div class="text-end mt-3 fw-bold">
-  Total Session Fee:
-  <span id="session-total-{{ $session->id }}">0 EGP</span>
-</div>
+            {{-- 👇 Hidden discount value (لـ JS فقط) --}}
+            <input
+              type="hidden"
+              id="discount-value-{{ $session->id }}"
+              value="{{ $session->discount_value ?? 0 }}"
+            >
+            <div class="text-end mt-3">
+
+              <div class="fw-bold">
+                Session Total:
+                <span id="session-total-{{ $session->id }}">0 EGP</span>
+              </div>
+
+              @if($session->discount_value)
+                <div class="fw-bold" style="color:#dc2626">
+                  Discount:
+                  -{{ number_format($session->discount_value, 2) }} EGP
+                </div>
+
+                <div class="fw-bold" style="margin-top:4px">
+                  Total After Discount:
+                  <span id="session-total-after-discount-{{ $session->id }}">
+                    0 EGP
+                  </span>
+                </div>
+              @endif
+
+            </div>
+
 
           </div>
 
@@ -373,12 +423,21 @@
     {{-- عنوان اليوم --}}
 
     @php
-    // نتأكد من تحويل $sessions الى Collection علشان نقدر نستخدم sum بسهولة
-    $daySessions = collect($sessions);
-    $dayTotal = $daySessions->sum(function($s) {
-        return (float) ($s->bill_amount ?? 0);
-    });
-  @endphp
+  $daySessions = collect($sessions);
+
+  $dayTotal = $daySessions->sum(function ($s) {
+
+      $drinksTotal = $s->orders
+          ->where('status', 'Received')
+          ->sum(function ($order) {
+              return $order->total_price
+                  ?? (($order->unit_price ?? 0) * ($order->quantity ?? 1));
+          });
+
+      return (float) ($s->bill_amount ?? 0) + $drinksTotal;
+  });
+@endphp
+
 
 <tr style="background: #efefef;">
   <td colspan="10" style="text-align:center; font-weight:bold; color:#333;">
@@ -414,7 +473,21 @@
         @endif
       </td>
 
-      <td data-label="Bill">{{ number_format($session->bill_amount, 2) }} EGP</td>
+      @php
+  $drinksTotal = $session->orders
+      ->where('status', 'Received')
+      ->sum(function ($order) {
+          return $order->total_price
+              ?? (($order->unit_price ?? 0) * ($order->quantity ?? 1));
+      });
+
+  $grandTotal = ($session->bill_amount ?? 0) + $drinksTotal;
+@endphp
+
+<td data-label="Bill">
+  {{ number_format($grandTotal, 2) }} EGP
+</td>
+
 
       <td data-label="Status">
         <span class="status checkout">Checked Out</span>
@@ -871,18 +944,357 @@ function updateSubGuestsTimers() {
   });
 
   // 👇 نحدث التوتال في الـ UI
-  for (const sessionId in totals) {
-    const totalEl = document.getElementById(`session-total-${sessionId}`);
-    if (totalEl) {
-      totalEl.textContent = totals[sessionId] + ' EGP';
-    }
+for (const sessionId in totals) {
+
+  const baseTotal = totals[sessionId];
+
+  // Total قبل الخصم
+  const totalEl = document.getElementById(`session-total-${sessionId}`);
+  if (totalEl) {
+    totalEl.textContent = baseTotal + ' EGP';
+  }
+
+  // 👇 لو فيه خصم
+  const discountValue = parseFloat(
+    document
+      .getElementById(`discount-value-${sessionId}`)
+      ?.value || 0
+  );
+
+  const afterDiscountEl =
+    document.getElementById(`session-total-after-discount-${sessionId}`);
+
+  if (afterDiscountEl) {
+    const finalTotal = Math.max(0, baseTotal - discountValue);
+    afterDiscountEl.textContent = finalTotal + ' EGP';
   }
 }
 
+}
 
 
 setInterval(updateSubGuestsTimers, 60000);
 updateSubGuestsTimers();
+</script>
+
+<div class="modal fade" id="discountModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Session Discount</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="discount-session-id">
+
+        <div class="mb-3">
+          <label class="form-label">Discount Amount (EGP)</label>
+          <input
+            type="number"
+            class="form-control"
+            id="discount-value"
+            min="0"
+            step="0.01"
+          >
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Reason (optional)</label>
+          <textarea
+            class="form-control"
+            id="discount-reason"
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn ghost" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn" onclick="saveDiscount()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let discountModal = new bootstrap.Modal(
+  document.getElementById('discountModal')
+);
+
+function openDiscountModal(sessionId, value, reason) {
+  document.getElementById('discount-session-id').value = sessionId;
+  document.getElementById('discount-value').value = value || '';
+  document.getElementById('discount-reason').value = reason || '';
+  discountModal.show();
+}
+
+function saveDiscount() {
+  const sessionId = document.getElementById('discount-session-id').value;
+  const value = document.getElementById('discount-value').value;
+  const reason = document.getElementById('discount-reason').value;
+
+  fetch(`/admin/sessions/${sessionId}/discount`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({
+      discount_value: value,
+      discount_reason: reason
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      location.reload(); // safe & simple
+    } else {
+      alert('Failed to save discount');
+    }
+  })
+  .catch(() => alert('Error saving discount'));
+}
+</script>
+
+<div class="modal fade" id="guestSearchModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">🔍 Search Guest</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Search Input -->
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Search by name or phone..."
+          id="guest-search-input"
+        >
+
+        <!-- Results -->
+        <div id="guest-search-results" style="margin-top:16px">
+
+          <div class="muted" id="guest-search-empty">
+            Start typing to search guests
+          </div>
+
+          <!-- Dummy result (UX only) -->
+          <!--
+          <div class="search-row">
+            <div>
+              <strong>Ahmed Hassan</strong>
+              <div class="muted">01012345678</div>
+            </div>
+            <button class="btn btn-sm">View Profile</button>
+          </div>
+          -->
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+const guestSearchModal = new bootstrap.Modal(
+  document.getElementById('guestSearchModal')
+);
+
+function openGuestSearchModal() {
+  document.getElementById('guest-search-input').value = '';
+  document.getElementById('guest-search-results').innerHTML =
+    '<div class="muted">Start typing to search guests</div>';
+
+  guestSearchModal.show();
+}
+</script>
+
+<script>
+const searchInput  = document.getElementById('guest-search-input');
+const resultsBox  = document.getElementById('guest-search-results');
+
+let searchTimeout = null;
+
+searchInput.addEventListener('input', function () {
+
+  const q = this.value.trim();
+
+  clearTimeout(searchTimeout);
+
+  if (q.length < 3) {
+    resultsBox.innerHTML =
+      '<div class="muted">Type at least 3 characters</div>';
+    return;
+  }
+
+  resultsBox.innerHTML = '<div class="muted">Searching...</div>';
+
+  searchTimeout = setTimeout(() => {
+    fetch(`/admin/guests/search?q=${encodeURIComponent(q)}`)
+      .then(res => res.json())
+      .then(renderGuestResults)
+      .catch(() => {
+        resultsBox.innerHTML =
+          '<div class="muted">Search failed</div>';
+      });
+  }, 300); // debounce
+});
+
+function renderGuestResults(guests) {
+
+  if (!guests.length) {
+    resultsBox.innerHTML =
+      '<div class="muted">No guests found</div>';
+    return;
+  }
+
+  resultsBox.innerHTML = '';
+
+  guests.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'search-row';
+
+    row.innerHTML = `
+      <div>
+        <strong>${g.fullname}</strong>
+        <div class="muted">${g.phone ?? ''}</div>
+      </div>
+      <a class="btn btn-sm" href="/profile/${g.id}">
+        View Profile
+      </a>
+    `;
+
+    resultsBox.appendChild(row);
+  });
+}
+</script>
+
+<div class="modal fade" id="holdSessionsModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">🕓 Hold Sessions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Empty state -->
+        <div class="muted" id="hold-empty">
+          No hold sessions yet
+        </div>
+
+        <!-- Dummy Hold Session (UX only) -->
+        <!--
+        <div class="search-row">
+          <div>
+            <strong>Ahmed Hassan</strong>
+            <div class="muted">Requested at: 14:32</div>
+          </div>
+
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm">Accept</button>
+            <button class="btn btn-sm ghost">Reject</button>
+          </div>
+        </div>
+        -->
+
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+const holdSessionsModal = new bootstrap.Modal(
+  document.getElementById('holdSessionsModal')
+);
+
+function openHoldSessionsModal() {
+  holdSessionsModal.show();
+}
+</script>
+
+<script>
+function loadHoldSessions() {
+  fetch('/admin/hold-sessions')
+    .then(res => res.json())
+    .then(data => {
+      const body = document.querySelector('#holdSessionsModal .modal-body');
+
+      if (!data.length) {
+        body.innerHTML = '<div class="muted">No hold sessions yet</div>';
+        return;
+      }
+
+      body.innerHTML = '';
+
+      data.forEach(h => {
+        body.innerHTML += `
+          <div class="search-row">
+            <div>
+              <strong>${h.guest_name}</strong>
+              <div class="muted">Requested at: ${h.requested_at}</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm" onclick="acceptHold(${h.guest_id})">Accept</button>
+              <button class="btn btn-sm ghost" onclick="rejectHold(${h.guest_id})">Reject</button>
+            </div>
+          </div>
+        `;
+      });
+    });
+}
+
+function acceptHold(guestId) {
+  if (!confirm('Accept this session and start it now?')) return;
+
+  fetch('/admin/hold-sessions/accept', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ guest_id: guestId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      // نفس منطق Start Session
+      window.location.href = '/admin/dashboard';
+    } else {
+      alert(data.message || 'Failed to start session');
+    }
+  })
+  .catch(() => {
+    alert('Failed to accept hold session');
+  });
+}
+
+
+function rejectHold(guestId) {
+  fetch('/admin/hold-sessions/reject', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ guest_id: guestId })
+  }).then(() => loadHoldSessions());
+}
+
+function openHoldSessionsModal() {
+  loadHoldSessions();
+  holdSessionsModal.show();
+}
 </script>
 
 

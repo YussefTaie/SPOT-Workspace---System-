@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Guest;
 use Illuminate\Http\Request;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-
+use App\Presenters\GuestSessionPresenter;
 
 class GuestController extends Controller
 {
@@ -19,6 +19,12 @@ class GuestController extends Controller
     // آخر جلسة نشطة
     $currentSession = $guest->sessions()->latest()->first();
 
+    $liveSession = null;
+
+    if ($currentSession && !$currentSession->check_out) {
+        $liveSession = GuestSessionPresenter::live($currentSession);
+    }
+
     $liveBill = null;
 
     if ($currentSession && !$currentSession->check_out) {
@@ -26,60 +32,60 @@ class GuestController extends Controller
     }
 
 
-    $durationFormatted = '-';
-    $currentBill = 0;
+    // $durationFormatted = '-';
+    // $currentBill = 0;
 
-    if ($currentSession && !$currentSession->check_out) {
-        $checkIn = \Carbon\Carbon::parse($currentSession->check_in);
-        $now = \Carbon\Carbon::now();
-        $duration = $checkIn->diff($now);
+    // if ($currentSession && !$currentSession->check_out) {
+    //     $checkIn = \Carbon\Carbon::parse($currentSession->check_in);
+    //     $now = \Carbon\Carbon::now();
+    //     $duration = $checkIn->diff($now);
 
-        // صيغة العرض
-        $durationFormatted = $duration->h . 'h ' . $duration->i . 'm';
+    //     // صيغة العرض
+    //     $durationFormatted = $duration->h . 'h ' . $duration->i . 'm';
 
-        // حساب عدد الساعات كـ float
-        $hours = $duration->days * 24 + $duration->h + ($duration->i / 60);
+    //     // حساب عدد الساعات كـ float
+    //     $hours = $duration->days * 24 + $duration->h + ($duration->i / 60);
 
-        $grace = 0.5; // 30 دقيقة
+    //     $grace = 0.5; // 30 دقيقة
 
-        switch (true) {
+    //     switch (true) {
         
-            // 1 → 3.5
-            case ($hours >= 1 && $hours < (3 + $grace)):
-                $currentBill = 50;
-                break;
+    //         // 1 → 3.5
+    //         case ($hours >= 1 && $hours < (3 + $grace)):
+    //             $currentBill = 50;
+    //             break;
         
-            // 3 → 6.5
-            case ($hours >= 3 && $hours < (6 + $grace)):
-                $currentBill = 80;
-                break;
+    //         // 3 → 6.5
+    //         case ($hours >= 3 && $hours < (6 + $grace)):
+    //             $currentBill = 80;
+    //             break;
         
-            // 6 → 12.5
-            case ($hours >= 6 && $hours < (8 + $grace)):
-                $currentBill = 100;
-                break;
+    //         // 6 → 12.5
+    //         case ($hours >= 6 && $hours < (8 + $grace)):
+    //             $currentBill = 100;
+    //             break;
             
-            case ($hours >= 8 && $hours < (12 + $grace)):
-                $currentBill = 120;
-                break;
+    //         case ($hours >= 8 && $hours < (12 + $grace)):
+    //             $currentBill = 120;
+    //             break;
         
-            // 12.5 → 24
-            case ($hours >= (12 + $grace) && $hours <= 24):
-                $currentBill = 150;
-                break;
+    //         // 12.5 → 24
+    //         case ($hours >= (12 + $grace) && $hours <= 24):
+    //             $currentBill = 150;
+    //             break;
         
-            // default = 1
-            default:
-                $currentBill = 1;
-                break;
-        }
+    //         // default = 1
+    //         default:
+    //             $currentBill = 1;
+    //             break;
+    //     }
         
 
-    }
+    // }
 
 
     // الأوردرات الحالية (اللي لسه مش Done)
-    $currentOrders = $guest->orders()->whereIn('status', ['Pending', 'InProgress'])->latest()->get();
+    $currentOrders = $guest->orders()->whereIn('status', ['Pending', 'InProgress', 'Done'])->latest()->get();
 
     // كل الأوردرات القديمة
     $historyOrders = $guest->orders()->where('status', 'Done')->latest()->get();
@@ -112,11 +118,11 @@ class GuestController extends Controller
         'registered_at' => $guest->created_at->format('d/m/Y'),
         'check_in' => $currentSession?->check_in ?? '-',
         'check_out' => $currentSession?->check_out ?? '-',
-        'duration' => $durationFormatted,
+        'duration' => $liveSession['duration'] ?? '-',
         'rate' => $currentSession?->rate . ' EGP',
-        'current_bill' => $currentBill . ' EGP',
+        // 'current_bill' => $currentBill . ' EGP',
         'live_bill' => $liveBill ? $liveBill . ' EGP' : '-',
-
+        'live_session' => $liveSession,
          // 🔹 أضف القيم الجديدة هنا
         'last_activity' => $lastActivity,
         'total_duration' => $totalDuration,
@@ -132,26 +138,33 @@ class GuestController extends Controller
                 'by' => $order->staff?->name ?? 'N/A',
             ];
         }),
-        'history' => $guest->sessions->map(function($session){
-            $checkIn = \Carbon\Carbon::parse($session->check_in);
-            $checkOut = $session->check_out ? \Carbon\Carbon::parse($session->check_out) : now();
-            $durationMinutes = $checkIn->diffInMinutes($checkOut);
-            $formattedDuration = floor($durationMinutes / 60) . 'h ' . ($durationMinutes % 60) . 'm';
+        'history' => $guest->sessions
+        ->whereNotNull('check_out')
+        ->sortByDesc('check_in')
+        ->map(fn ($s) => \App\Presenters\GuestSessionPresenter::history($s))
+        ->values(),
 
-            return [
-                'date' => $session->created_at->format('d/m/Y'),
-                'duration' => $formattedDuration,
-                'bill' => ($session->bill_amount ?? 0) . ' EGP',
-            ];
-        }),
 
-        'history_orders' => $historyOrders->map(function($order){
-            return [
-                'date' => $order->created_at->format('d/m/Y'),
-                'order' => $order->menuItem->name,
-                'price' => $order->total_price . ' EGP',
-            ];
-        }),
+        // 'history' => $guest->sessions->map(function($session){
+        //     $checkIn = \Carbon\Carbon::parse($session->check_in);
+        //     $checkOut = $session->check_out ? \Carbon\Carbon::parse($session->check_out) : now();
+        //     $durationMinutes = $checkIn->diffInMinutes($checkOut);
+        //     $formattedDuration = floor($durationMinutes / 60) . 'h ' . ($durationMinutes % 60) . 'm';
+
+        //     return [
+        //         'date' => $session->created_at->format('d/m/Y'),
+        //         'duration' => $formattedDuration,
+        //         'bill' => ($session->bill_amount ?? 0) . ' EGP',
+        //     ];
+        // }),
+
+        // 'history_orders' => $historyOrders->map(function($order){
+        //     return [
+        //         'date' => $order->created_at->format('d/m/Y'),
+        //         'order' => $order->menuItem->name,
+        //         'price' => $order->total_price . ' EGP',
+        //     ];
+        // }),
     ];
 
     
@@ -292,6 +305,43 @@ class GuestController extends Controller
     
     }
 
+
+    public function overviewSnapshot(Guest $guest)
+    {
+    $currentSession = $guest->sessions()->latest()->first();
+
+    if (!$currentSession || $currentSession->check_out) {
+        return response()->json([
+            'active' => false
+        ]);
+    }
+
+    $snapshot = \App\Presenters\GuestSessionPresenter::live($currentSession);
+
+    return response()->json([
+        'active' => true,
+        'session' => $snapshot,
+    ]);
+    }
+
+    public function currentOrdersPartial(Guest $guest)
+{
+    $orders = $guest->orders()
+    ->whereIn('status', ['Pending', 'InProgress', 'Done'])
+    ->latest()
+    ->get()
+    ->map(function ($order) {
+        return [
+            'name'   => $order->menuItem?->name ?? 'Unknown',
+            'time'   => $order->created_at?->diffForHumans() ?? '-',
+            'status' => $order->status,
+            'by'     => $order->staff?->name ?? 'N/A',
+        ];
+    });
+
+return view('gest.partials.current_orders', compact('orders'));
+
+}
 
 
 

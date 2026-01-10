@@ -153,27 +153,30 @@ public function endSession(Session $session)
     //         break;
     // }
     // $billAmount = $billAmount * $session->people_count;
-    if ($session->session_type === 'regular') {
+// الحساب الأساسي
+if ($session->session_type === 'regular') {
 
-    // نقفل أي SubGuest لسه موجود
     foreach ($session->subGuests()->whereNull('left_at')->get() as $sg) {
         $sg->update(['left_at' => now()]);
     }
 
-    $billAmount = $this->calculateRegularFromSubGuests($session);
+    $baseBill = $this->calculateRegularFromSubGuests($session);
 
 } else {
-    // room session تفضل زي ما هي
-    $billAmount = $this->calculateSessionBill($session);
+
+    $baseBill = $this->calculateSessionBill($session);
 }
 
+// ✅ طبّق الخصم
+$discountResult = $this->applySessionDiscount($session, $baseBill);
 
-    // حدث بيانات السيشن
-    $session->update([
-        'check_out' => $checkOut,
-        'duration_minutes' => $durationMinutes,
-        'bill_amount' => $billAmount,
-    ]);
+// ✅ احفظ الرقم النهائي بعد الخصم
+$session->update([
+    'check_out' => $checkOut,
+    'duration_minutes' => $durationMinutes,
+    'bill_amount' => $discountResult['final'],
+]);
+
 
     return redirect()->back()->with('success', 'Session ended successfully!');
 }
@@ -317,8 +320,8 @@ public function check($id)
 
         $qty = $order->quantity ?? 1;
 
-        // فقط الأوردرات اللي حالتهم Done يضيفوا للمجموع
-        if ($order->status === 'Done') {
+        // فقط الأوردرات اللي حالتهم Received يضيفوا للمجموع
+        if ($order->status === 'Received') {
             $drinksTotal += $subtotal;
         }
 
@@ -331,7 +334,15 @@ public function check($id)
         ];
     }
 
-    $grandTotal = round($bill + $drinksTotal, 2);
+    // $grandTotal = round($bill + $drinksTotal, 2);
+    $sessionResult = $this->applySessionDiscount($session, $bill);
+
+    $billOriginal = $sessionResult['original'];
+    $billDiscount = $sessionResult['discount'];
+    $billFinal    = $sessionResult['final'];
+
+    $grandTotal = round($billFinal + $drinksTotal, 2);
+
 
     $subGuestsBreakdown = [];
 
@@ -372,7 +383,18 @@ if ($session->session_type === 'regular') {
 }
 
 
-    return view('gest.check', compact('session', 'duration', 'bill', 'drinksTotal', 'drinksDetails', 'grandTotal', 'subGuestsBreakdown'));
+    return view('gest.check', compact(
+  'session',
+  'duration',
+  'billOriginal',
+  'billDiscount',
+  'billFinal',
+  'drinksTotal',
+  'drinksDetails',
+  'grandTotal',
+  'subGuestsBreakdown'
+));
+
 }
 
 public function updatePeople(Request $request, Session $session)
@@ -552,6 +574,48 @@ public function calculateRegularFromSubGuests(Session $session)
 
     return $total;
 }
+
+private function applySessionDiscount(Session $session, float $amount): array
+{
+    $discount = 0;
+
+    if ($session->discount_value) {
+        if ($session->discount_type === 'percent') {
+            $discount = ($amount * $session->discount_value) / 100;
+        } else {
+            $discount = $session->discount_value;
+        }
+    }
+
+    $final = max(0, $amount - $discount);
+
+    return [
+        'original' => $amount,
+        'discount' => round($discount, 2),
+        'final'    => round($final, 2),
+    ];
+}
+
+
+public function updateDiscount(Request $request, Session $session)
+{
+    $request->validate([
+        'discount_value' => 'nullable|numeric|min:0',
+        'discount_reason' => 'nullable|string|max:1000',
+    ]);
+
+    $session->update([
+        'discount_type'   => 'fixed', // دلوقتي ثابت
+        'discount_value'  => $request->discount_value,
+        'discount_reason' => $request->discount_reason,
+    ]);
+
+    return response()->json([
+        'status' => 'success'
+    ]);
+}
+
+
 
 
 

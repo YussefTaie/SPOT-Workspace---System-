@@ -93,23 +93,11 @@
             </tr>
           </thead>
           <tbody id="pendingTbody">
-          @forelse($pendingOrders as $order)
-<tr>
-  <td data-label="Customer">{{ optional($order->session->guest)->fullname ?? 'N/A' }}</td>
-  <td data-label="Order">
-    {{ optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id }} ×{{ $order->quantity ?? 1 }}
-    <br><small class="muted">{{ number_format($order->unit_price ?? 0, 2) }} EGP each</small>
-  </td>
-  <td data-label="Requested At">{{ $order->created_at->format('H:i') }}</td>
-  <td data-label="Status"><span class="status pending">Pending</span></td>
-  <td data-label="Actions" style="text-align:right;">
-    <form class="ajax-action" data-action="accept" action="{{ route('orders.accept', $order->id) }}" method="POST" style="display:inline;">@csrf<button class="btn">Accept</button></form>
-    <form class="ajax-action" data-action="cancel" action="{{ route('orders.cancel', $order->id) }}" method="POST" style="display:inline;">@csrf<button class="btn ghost">Cancel</button></form>
-  </td>
-</tr>
-@empty
-<tr><td colspan="5">No pending orders.</td></tr>
-@endforelse
+  <tr>
+    <td colspan="5" style="text-align:center;color:#888;">
+      Loading pending orders...
+    </td>
+  </tr>
 
 
           </tbody>
@@ -131,71 +119,129 @@
             </tr>
           </thead>
           <tbody id="inProgressTbody">
-          @forelse($inProgressOrders as $order)
-<tr>
-  <td data-label="Customer">{{ optional($order->session->guest)->fullname ?? 'N/A' }}</td>
-  <td data-label="Order">
-    {{ optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id }} ×{{ $order->quantity ?? 1 }}
-    <br><small class="muted">{{ number_format($order->unit_price ?? 0, 2) }} EGP each</small>
-  </td>
-  <td data-label="Accepted At">{{ $order->accepted_at ? $order->accepted_at->format('H:i') : $order->updated_at->format('H:i') }}</td>
-  <td data-label="Status"><span class="status progress">In Progress</span></td>
-  <td data-label="Actions" style="text-align:right;">
-    <form class="ajax-action" data-action="done" action="{{ route('orders.markDone', $order->id) }}" method="POST" style="display:inline;">@csrf<button class="btn">Done</button></form>
-    <form class="ajax-action" data-action="cancel" action="{{ route('orders.cancel', $order->id) }}" method="POST" style="display:inline;">@csrf<button class="btn ghost">Cancel</button></form>
-  </td>
-</tr>
-@empty
-<tr><td colspan="5">No in-progress orders.</td></tr>
-@endforelse
+    <tr>
+    <td colspan="5" style="text-align:center;color:#888;">
+      Loading in-progress orders...
+    </td>
+  </tr>
 
           </tbody>
         </table>
+         {{-- Orders: Done (Waiting for pickup) --}}
+<hr style="margin:30px 0;opacity:0.12;">
+<h2 style="margin-top:0;">Orders — Done</h2>
+<p class="muted">Orders completed and waiting to be received</p>
+
+<table aria-label="Done Orders">
+  <thead>
+    <tr>
+      <th>Customer</th>
+      <th>Order</th>
+      <th>Done At</th>
+      <th>Status</th>
+      <th style="text-align:right;">Actions</th>
+    </tr>
+  </thead>
+  <tbody id="doneTbody">
+    <tr>
+      <td colspan="5" style="text-align:center;color:#888;">
+        No done orders
+      </td>
+    </tr>
+  </tbody>
+</table>
       </div>
+
+     
+
+
 
       {{-- SECTION: Past Orders --}}
-      <div id="sectionPast" style="display:none;">
-        <hr style="margin:30px 0;opacity:0.12;">
-        <h2 style="margin-top:0;">Orders — Done</h2>
-        <p class="muted">Completed orders</p>
+<div id="sectionPast" style="display:none;">
+  <hr style="margin:30px 0;opacity:0.12;">
 
-        <table aria-label="Done Orders">
-          <thead>
-            <tr>
-              <th>Customer</th>
-              <th>Order</th>
-              <th>Served At</th>
-              <th>Bill</th>
-              <th>Status</th>
-              <th style="text-align:right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="doneTbody">
-          @forelse($doneOrders as $order)
-<tr>
-  <td data-label="Customer">{{ optional($order->session->guest)->fullname ?? $order->ordered_by ?? 'N/A' }}</td>
-  <td data-label="Order">
-    {{ optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id }} ×{{ $order->quantity ?? 1 }}
-    <br><small class="muted">{{ number_format($order->unit_price ?? 0, 2) }} EGP each</small>
-  </td>
-  <td data-label="Served At">{{ optional($order->served_at)->format('H:i') ?? $order->updated_at->format('H:i') }}</td>
-  <td data-label="Bill">{{ number_format($order->total_price ?? ($order->unit_price * ($order->quantity ?? 1)), 2) }} EGP</td>
-  <td data-label="Status"><span class="status done">Done</span></td>
-  <td data-label="Actions" style="text-align:right;">
-    <button class="btn" onclick="window.location.href='{{ route('profile.user', optional($order->session->guest)->id ?? '') }}'">View Profile</button>
-    <a class="btn ghost" href="#" onclick="alert('Print static')">Print The Check</a>
-  </td>
-</tr>
-@empty
-<tr><td colspan="6" style="text-align:center;color:#888;">No done orders</td></tr>
-@endforelse
+  <!-- <h2 style="margin-top:0;">Orders — Finished</h2>
+  <p class="muted">Orders waiting to be received by guest</p>
 
-          </tbody>
-        </table>
-      </div>
+  <table aria-label="Finished Orders">
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>Order</th>
+        <th>Served At</th>
+        <th>Status</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
 
-    </div>
-  </div>
+    <tbody id="finishedTbody">
+      @forelse([] as $order)
+        <tr data-order-id="{{ $order->id }}">
+          <td data-label="Customer">
+            {{ optional($order->session->guest)->fullname ?? $order->ordered_by ?? 'N/A' }}
+          </td>
+
+          <td data-label="Order">
+            {{ optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id }}
+            ×{{ $order->quantity ?? 1 }}
+            <br>
+            <small class="muted">
+              {{ number_format($order->unit_price ?? 0, 2) }} EGP each
+            </small>
+          </td>
+
+          <td data-label="Served At">
+            {{ optional($order->served_at)->format('H:i') ?? $order->updated_at->format('H:i') }}
+          </td>
+
+          <td data-label="Status">
+            <span class="status done">Finished</span>
+          </td>
+
+          <td data-label="Actions" style="text-align:right;">
+            <form class="ajax-action"
+                  data-action="received"
+                  action="{{ route('orders.received', $order->id) }}"
+                  method="POST"
+                  style="display:inline;">
+              @csrf
+              <button class="btn">Received</button>
+            </form>
+          </td>
+        </tr>
+      @empty
+        <tr>
+          <td colspan="5" style="text-align:center;color:#888;">
+            No finished orders
+          </td>
+        </tr>
+      @endforelse
+    </tbody>
+  </table> -->
+  <h2 style="margin-top:0;">Orders — Received</h2>
+<p class="muted">Orders already received by guests</p>
+
+<table aria-label="Received Orders">
+  <thead>
+    <tr>
+      <th>Customer</th>
+      <th>Order</th>
+      <th>Received At</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+
+  <tbody id="receivedTbody">
+    <tr>
+      <td colspan="4" style="text-align:center;color:#888;">
+        No received orders
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
   
   <script>
 /* ======= UI refs ======= */
@@ -221,6 +267,9 @@ const PARTIALS_URL_BASE = '{{ route("barista.orders.partials") }}';
 const pendingTbody = document.getElementById('pendingTbody');
 const inProgressTbody = document.getElementById('inProgressTbody');
 const doneTbody = document.getElementById('doneTbody');
+const receivedTbody = document.getElementById('receivedTbody');
+
+
 
 /* ======= helpers ======= */
 function getCsrfTokenFromDocumentOrForm(form = null) {
@@ -330,41 +379,61 @@ async function syncOrders() {
       const data = await res.json().catch(()=>null);
       if (!data) return;
       // data.pending etc expected as HTML strings (<tr>...</tr> rows or a full tbody)
+      // const applyFragment = (html, targetTbody) => {
+      //   if (!html || !targetTbody) return;
+      //   // if html contains <tbody id="...">, extract inner <tr> list
+      //   let tmp = document.createElement('table');
+      //   tmp.innerHTML = html;
+      //   const trs = tmp.querySelectorAll('tr');
+      //   // build map of existing ids
+      //   const existingIds = new Set(Array.from(targetTbody.querySelectorAll('tr')).map(t => getOrderIdFromTr(t)).filter(Boolean));
+      //   // add new rows
+      //   Array.from(trs).reverse().forEach(tr => {
+      //     const id = getOrderIdFromTr(tr) || null;
+      //     if (id && existingIds.has(String(id))) {
+      //       // update existing row if different
+      //       const existing = targetTbody.querySelector(`tr[data-order-id="${id}"]`) || targetTbody.querySelector(`tr:has(form[action*="/orders/${id}"])`);
+      //       if (existing && existing.innerText !== tr.innerText) existing.replaceWith(tr.cloneNode(true));
+      //     } else {
+      //       // insert new on top
+      //       insertRowAtTop(targetTbody, tr.cloneNode(true));
+      //     }
+      //   });
+      //   // remove rows that are no longer present in server fragment
+      //   const incomingIds = new Set(Array.from(trs).map(t => getOrderIdFromTr(t)).filter(Boolean));
+      //   Array.from(targetTbody.querySelectorAll('tr')).forEach(curr => {
+      //     const cid = getOrderIdFromTr(curr);
+      //     if (cid && !incomingIds.has(String(cid))) {
+      //       curr.style.transition = 'opacity 0.2s';
+      //       curr.style.opacity = '0.4';
+      //       setTimeout(()=> curr.remove(), 160);
+      //     }
+      //   });
+      // };
       const applyFragment = (html, targetTbody) => {
         if (!html || !targetTbody) return;
-        // if html contains <tbody id="...">, extract inner <tr> list
-        let tmp = document.createElement('table');
-        tmp.innerHTML = html;
-        const trs = tmp.querySelectorAll('tr');
-        // build map of existing ids
-        const existingIds = new Set(Array.from(targetTbody.querySelectorAll('tr')).map(t => getOrderIdFromTr(t)).filter(Boolean));
-        // add new rows
-        Array.from(trs).reverse().forEach(tr => {
-          const id = getOrderIdFromTr(tr) || null;
-          if (id && existingIds.has(String(id))) {
-            // update existing row if different
-            const existing = targetTbody.querySelector(`tr[data-order-id="${id}"]`) || targetTbody.querySelector(`tr:has(form[action*="/orders/${id}"])`);
-            if (existing && existing.innerText !== tr.innerText) existing.replaceWith(tr.cloneNode(true));
-          } else {
-            // insert new on top
-            insertRowAtTop(targetTbody, tr.cloneNode(true));
-          }
-        });
-        // remove rows that are no longer present in server fragment
-        const incomingIds = new Set(Array.from(trs).map(t => getOrderIdFromTr(t)).filter(Boolean));
-        Array.from(targetTbody.querySelectorAll('tr')).forEach(curr => {
-          const cid = getOrderIdFromTr(curr);
-          if (cid && !incomingIds.has(String(cid))) {
-            curr.style.transition = 'opacity 0.2s';
-            curr.style.opacity = '0.4';
-            setTimeout(()=> curr.remove(), 160);
-          }
-        });
+
+        // السيرفر هو المصدر الوحيد للحقيقة
+        targetTbody.innerHTML = html;
       };
+
 
       applyFragment(data.pending || '', pendingTbody);
       applyFragment(data.inProgress || data.in_progress || '', inProgressTbody);
       applyFragment(data.done || '', doneTbody);
+      applyFragment(data.received || '', receivedTbody);
+      // safety: ensure received orders never stay in DONE (current only)
+      if (sectionCurrent.style.display !== 'none' && doneTbody) {
+        Array.from(doneTbody.querySelectorAll('tr')).forEach(tr => {
+          const statusEl = tr.querySelector('.status');
+          if (statusEl && statusEl.textContent.toLowerCase() === 'received') {
+            tr.remove();
+          }
+        });
+      }
+
+
+
       return;
     }
 
@@ -380,7 +449,8 @@ async function syncOrders() {
     };
     const pendingHtml = extract('pendingTbody');
     const inProgressHtml = extract('inProgressTbody');
-    const doneHtml = extract('doneTbody');
+    const finishedHtml = extract('finishedTbody');
+    // const doneHtml = extract('doneTbody');
 
     // reuse simple apply: create table tmp and move trs
     const applyHtml = (h, tb) => {
@@ -393,7 +463,8 @@ async function syncOrders() {
 
     if (pendingHtml) applyHtml(pendingHtml, pendingTbody);
     if (inProgressHtml) applyHtml(inProgressHtml, inProgressTbody);
-    if (doneHtml) applyHtml(doneHtml, doneTbody);
+    if (finishedHtml) applyHtml(finishedHtml, finishedTbody);
+    // if (doneHtml) applyHtml(doneHtml, doneTbody);
 
   } catch (err) {
     console.error('[syncOrders] error', err);
@@ -402,9 +473,11 @@ async function syncOrders() {
 
 /* ======= delegated submit handler (handles accept/done/cancel) ======= */
 document.addEventListener('submit', async function (e) {
-  const form = e.target;
-  if (!form || !form.matches || !form.matches('form.ajax-action')) return;
+  const form = e.target.closest('form.ajax-action');
+  if (!form) return;
   e.preventDefault();
+  console.log('DONE HANDLER FIRED', form.dataset.action);
+
 
   if (form.dataset.action === 'cancel' && !confirm('Are you sure you want to cancel this order?')) return;
 
@@ -478,26 +551,44 @@ document.addEventListener('submit', async function (e) {
           console.warn('[AJAX] accept: no tr found locally, will sync');
         }
       } else if (act === 'done' || act === 'mark-done') {
-        // move to doneTbody
+  if (tr) {
+    const newTr = cloneRowAndSetOrderId(tr, orderId);
+
+    const statusEl = newTr.querySelector('.status');
+    if (statusEl) {
+      statusEl.className = 'status done';
+      statusEl.textContent = 'Done';
+    }
+
+    const doneAtCell = newTr.children[2];
+    if (doneAtCell) doneAtCell.textContent = nowTimeHHMM();
+
+    const actionsCell = newTr.querySelector('td[data-label="Actions"]') || newTr.querySelector('td:last-child');
+    if (actionsCell) {
+      actionsCell.innerHTML = `
+        <form class="ajax-action" data-action="received"
+              action="/orders/${orderId}/received" method="POST" style="display:inline;">
+          <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]').content}">
+          <button class="btn">Received</button>
+        </form>
+      `;
+    }
+
+    tr.remove();
+    insertRowAtTop(doneTbody, newTr);
+  }
+}
+
+else if (act === 'received') {
         if (tr) {
-          const newTr = cloneRowAndSetOrderId(tr, orderId);
-          // update status
-          const statusEl = newTr.querySelector('.status');
-          if (statusEl) { statusEl.className = 'status done'; statusEl.textContent = 'Done'; }
-          // update served at column
-          const servedAtCell = newTr.querySelector('td[data-label="Served At"]') || newTr.children[2];
-          if (servedAtCell) servedAtCell.textContent = nowTimeHHMM();
-          // compute simple bill if possible
-          const priceText = newTr.querySelector('.muted') ? newTr.querySelector('.muted').textContent : null;
-          // replace actions to View Profile + Print (keep existing links if present)
-          const actionsCell = newTr.querySelector('td[data-label="Actions"]') || newTr.querySelector('td:last-child');
-          if (actionsCell) actionsCell.innerHTML = `<button class="btn" onclick="/* view profile fallback */">View Profile</button> <a class="btn ghost" href="#" onclick="alert('Print static')">Print The Check</a>`;
-          tr.remove();
-          insertRowAtTop(doneTbody, newTr);
-        } else {
-          console.warn('[AJAX] done: no tr found locally, will sync');
+          tr.style.transition = 'opacity 0.2s';
+          tr.style.opacity = '0.4';
+          setTimeout(() => tr.remove(), 160);
         }
-      } else {
+        setTimeout(() => {
+          syncOrders();
+        }, 50);
+      }else {
         // other actions: just remove row
         if (tr) tr.remove();
       }
@@ -521,9 +612,9 @@ syncOrders();
 const SYNC_INTERVAL = 3000; // poll every 3s for faster new-orders
 setInterval(syncOrders, SYNC_INTERVAL);
 
-setInterval(() => {
-    location.reload();
-  }, 60 * 1000);
+// setInterval(() => {
+//     location.reload();
+//   }, 60 * 1000);
 </script>
 
 

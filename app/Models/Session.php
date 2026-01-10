@@ -20,6 +20,9 @@ class Session extends Model
         'people_count',
         'session_type',
         'room_number',
+        'discount_type',
+        'discount_value',
+        'discount_reason',
     ];
 
     public function guest()

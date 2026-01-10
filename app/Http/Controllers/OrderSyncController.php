@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Barista;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -11,7 +11,6 @@ class OrderSyncController extends Controller
 {
     public function partials(Request $request)
     {
-        // Normalize statuses depending on how you store them (case-sensitive differences)
         $pendingOrders = Order::whereRaw("LOWER(status) = ?", ['pending'])
             ->with(['session.guest','menuItem'])
             ->orderBy('created_at')
@@ -23,20 +22,34 @@ class OrderSyncController extends Controller
             ->get();
 
         $doneOrders = Order::whereRaw("LOWER(status) = ?", ['done'])
-            ->with(['session.guest','menuItem'])
-            ->whereDate('served_at', Carbon::today())
-            ->orderByDesc('served_at')
-            ->get();
+        ->with(['session.guest','menuItem'])
+        ->orderByDesc('updated_at')
+        ->get();
+
+
+
+        $receivedOrders = Order::whereRaw("LOWER(status) = ?", ['received'])
+        ->with(['session.guest','menuItem'])
+        ->orderByDesc('updated_at')
+        ->get();
+
+
+
 
         $pendingHtml = view('barista.partials.pending_tbody', compact('pendingOrders'))->render();
         $inProgressHtml = view('barista.partials.inprogress_tbody', compact('inProgressOrders'))->render();
         $doneHtml = view('barista.partials.done_tbody', compact('doneOrders'))->render();
+        $receivedHtml = view('barista.partials.received_tbody', compact('receivedOrders'))->render();
+
 
         return response()->json([
-            'pending'   => $pendingHtml,
-            'inProgress'=> $inProgressHtml,
-            'done'      => $doneHtml,
-            'timestamp' => now()->toISOString(),
+            'pending'    => $pendingHtml,
+            'inProgress' => $inProgressHtml,
+            'done'       => $doneHtml,
+            'received'   => $receivedHtml,
+            'timestamp'  => now()->toISOString(),
         ])->header('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');
+
     }
 }
+

@@ -179,23 +179,43 @@
 
 
     <div style="margin-top:18px">
-      <table style="width:100%">
-        <tbody>
-          <tr>
-            <td class="right muted" style="width:85%">Session Fee:</td>
-            <td class="right">{{ number_format($bill, 2) }} EGP</td>
-          </tr>
-          <tr>
-            <td class="right muted">Drinks Total:</td>
-            <td class="right">{{ number_format($drinksTotal, 2) }} EGP</td>
-          </tr>
-          <tr>
-            <td class="right" style="font-weight:800">Grand Total:</td>
-            <td class="right" style="font-weight:800">{{ number_format($grandTotal, 2) }} EGP</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  <table style="width:100%">
+    <tbody>
+      <tr>
+        <td class="right muted" style="width:85%">Session Fee:</td>
+        <td class="right">{{ number_format($billOriginal, 2) }} EGP</td>
+      </tr>
+
+      @if($billDiscount > 0)
+      <tr>
+        <td class="right muted">Discount:</td>
+        <td class="right" style="color:#dc2626;font-weight:600">-{{ number_format($billDiscount, 2) }} EGP</td>
+
+      </tr>
+
+      <tr>
+        <td class="right" style="font-weight:800">Session After Discount:</td>
+        <td class="right" style="font-weight:800">
+          {{ number_format($billFinal, 2) }} EGP
+        </td>
+      </tr>
+      @endif
+
+      <tr>
+        <td class="right muted">Drinks Total:</td>
+        <td class="right">{{ number_format($drinksTotal, 2) }} EGP</td>
+      </tr>
+
+      <tr>
+        <td class="right" style="font-weight:800">Grand Total:</td>
+        <td class="right" style="font-weight:800">
+          {{ number_format($grandTotal, 2) }} EGP
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 
     <div style="text-align:right">
       <button class="print-btn" onclick="window.print()">Print Receipt</button>

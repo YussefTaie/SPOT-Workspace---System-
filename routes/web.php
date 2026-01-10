@@ -47,6 +47,11 @@
     Route::post('/sessions/{session}/end', [SessionController::class, 'endSession'])->name('sessions.end');
 
     Route::get('/profile/{guest}', [GuestController::class, 'profile'])->name('profile.user');
+    
+    Route::get('/profile/{guest}/snapshot', [GuestController::class, 'overviewSnapshot'])
+    ->name('profile.snapshot');
+
+    Route::get('/profile/{guest}/orders/partial', [GuestController::class, 'currentOrdersPartial'])->name('profile.orders.partial');
 
 
     //Barista
@@ -74,6 +79,17 @@
     // show edit form
     Route::get('/menu/{menuItem}/edit', [App\Http\Controllers\Admin\MenuItemController::class, 'edit'])->name('admin.menu.edit');
 
+// Route::get('/test-received/{order}', function (\App\Models\Order $order) {
+//     try {
+//         \DB::table('orders')
+//             ->where('id', $order->id)
+//             ->update(['status' => 'received']);
+
+//         return 'OK';
+//     } catch (\Throwable $e) {
+//         return $e->getMessage();
+//     }
+// });
 
 
 
@@ -95,11 +111,14 @@
     // Past orders للبارستا (اختياري ولكن مفيد)
     Route::get('/orders/past', [BaristaController::class, 'pastOrders'])->name('barista.orders.past');  
 
-    Route::get('/barista/orders/partials', [\App\Http\Controllers\Barista\OrderSyncController::class, 'partials'])
+    Route::get('/orders/partials', [\App\Http\Controllers\OrderSyncController::class, 'partials'])
      ->name('barista.orders.partials');
 
-     Route::get('/orders/partials', [\App\Http\Controllers\Barista\OrderSyncController::class, 'partials'])
-     ->name('barista.orders.partials');
+
+
+
+    //  Route::get('/orders/partials', [\App\Http\Controllers\Barista\OrderSyncController::class, 'partials'])
+    //  ->name('barista.orders.partials');
 
 
 
@@ -110,6 +129,7 @@
     Route::post('/orders/{order}/accept', [OrderController::class, 'accept'])->name('orders.accept');
     Route::post('/orders/{order}/mark-done', [OrderController::class, 'markDone'])->name('orders.markDone');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/received', [OrderController::class, 'markReceived'])->name('orders.received');
     });
     
 
@@ -125,6 +145,15 @@
 
         Route::post('/sub-guests/{subGuest}/end', [SessionController::class, 'endSubGuest'])
         ->name('admin.sessions.subguests.end');
+
+        Route::post('/sessions/{session}/discount', [SessionController::class, 'updateDiscount'])->name('admin.sessions.discount');
+
+        Route::get('/guests/search', [AdminController::class, 'searchGuests'])->name('admin.guests.search');
+        
+        Route::post('/hold-sessions/request', [AdminController::class, 'requestHoldSession']);
+        Route::get('/hold-sessions', [AdminController::class, 'getHoldSessions']);
+        Route::post('/hold-sessions/accept', [AdminController::class, 'acceptHoldSession']);
+        Route::post('/hold-sessions/reject', [AdminController::class, 'rejectHoldSession']);
 
         // إدارة المنيو بواسطة الأدمن
         Route::get('/menu', [App\Http\Controllers\Admin\MenuItemController::class, 'index'])->name('admin.menu.index');

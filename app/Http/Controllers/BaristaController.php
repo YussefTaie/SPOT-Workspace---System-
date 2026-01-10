@@ -41,7 +41,9 @@ class BaristaController extends Controller
     // <-- NEW: all recent orders (optional) to satisfy @forelse($orders...)
     $orders = (clone $baseQuery)->orderBy('created_at','desc')->limit(500)->get();
 
-    return view('barista.barista_dashboard', compact('orders','pendingOrders','inProgressOrders','doneOrders'));
+    // return view('barista.barista_dashboard', compact('orders','pendingOrders','inProgressOrders','doneOrders'));
+    return view('barista.barista_dashboard');
+
 }
 
 
