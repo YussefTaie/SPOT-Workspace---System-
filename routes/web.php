@@ -167,6 +167,14 @@
     // HOST ROUTES
     Route::prefix('host')->middleware(['auth:host', 'is_host'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'host'])->name('host.dashboard');
+
+        // 👇 Guest search للهوست
+    Route::get('/guests/search', [AdminController::class, 'searchGuests']);
+
+    // 👇 Hold sessions للهوست
+    Route::get('/hold-sessions', [AdminController::class, 'getHoldSessions']);
+    Route::post('/hold-sessions/accept', [AdminController::class, 'acceptHoldSession']);
+    Route::post('/hold-sessions/reject', [AdminController::class, 'rejectHoldSession']);
     });
     
 

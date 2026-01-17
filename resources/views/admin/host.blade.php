@@ -1137,7 +1137,7 @@ searchInput.addEventListener('input', function () {
   resultsBox.innerHTML = '<div class="muted">Searching...</div>';
 
   searchTimeout = setTimeout(() => {
-    fetch(`/admin/guests/search?q=${encodeURIComponent(q)}`)
+    fetch(`/host/guests/search?q=${encodeURIComponent(q)}`)
       .then(res => res.json())
       .then(renderGuestResults)
       .catch(() => {
@@ -1224,7 +1224,7 @@ function openHoldSessionsModal() {
 
 <script>
 function loadHoldSessions() {
-  fetch('/admin/hold-sessions')
+  fetch('/host/hold-sessions')
     .then(res => res.json())
     .then(data => {
       const body = document.querySelector('#holdSessionsModal .modal-body');
@@ -1256,7 +1256,7 @@ function loadHoldSessions() {
 function acceptHold(guestId) {
   if (!confirm('Accept this session and start it now?')) return;
 
-  fetch('/admin/hold-sessions/accept', {
+  fetch('/host/hold-sessions/accept', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1268,7 +1268,7 @@ function acceptHold(guestId) {
   .then(data => {
     if (data.status === 'success') {
       // نفس منطق Start Session
-      window.location.href = '/admin/dashboard';
+      window.location.href = '/host/dashboard';
     } else {
       alert(data.message || 'Failed to start session');
     }
@@ -1280,7 +1280,7 @@ function acceptHold(guestId) {
 
 
 function rejectHold(guestId) {
-  fetch('/admin/hold-sessions/reject', {
+  fetch('/host/hold-sessions/reject', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
