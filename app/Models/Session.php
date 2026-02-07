@@ -23,6 +23,8 @@ class Session extends Model
         'discount_type',
         'discount_value',
         'discount_reason',
+        'shift_id', 
+        'payment_method',
     ];
 
     public function guest()

@@ -6,7 +6,6 @@ use App\Models\Session;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Guest;
-
 class AdminController extends Controller
 {
         public function dashboard()
@@ -24,8 +23,15 @@ class AdminController extends Controller
             ->groupBy(function($session) {
                 return \Carbon\Carbon::parse($session->check_out)->format('Y-m-d');
             });
+        $shifts = \App\Models\Shift::with([
+        'sessions.guest',
+        'sessions.orders'
+        ])
+        ->orderBy('started_at', 'desc')
+        ->get();
+        
 
-        return view('admin.admin_dashboard', compact('activeSessions', 'historySessions'));
+        return view('admin.admin_dashboard', compact('activeSessions', 'historySessions','shifts'));
     }
 
     public function host()
@@ -206,6 +212,15 @@ public function rejectHoldSession(Request $request)
         'message' => 'Hold rejected',
     ]);
 }
+
+public function ordersTotal($orders)
+{
+    return $orders
+        ->whereIn('status', ['Received','Done'])
+        ->sum('total_price');
+}
+
+
 
 
 

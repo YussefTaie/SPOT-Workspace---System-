@@ -162,6 +162,12 @@
         Route::get('/menu/{menuItem}/edit', [App\Http\Controllers\Admin\MenuItemController::class, 'edit'])->name('admin.menu.edit');
         Route::put('/menu/{menuItem}', [App\Http\Controllers\Admin\MenuItemController::class, 'update'])->name('admin.menu.update');
         Route::delete('/menu/{menuItem}', [App\Http\Controllers\Admin\MenuItemController::class, 'destroy'])->name('admin.menu.destroy');
+
+        Route::post('/admin/expenses', [\App\Http\Controllers\Admin\ExpenseController::class,'store'])->name('admin.expenses.store');
+
+
+        Route::post('/shifts/change', [\App\Http\Controllers\Admin\ShiftController::class, 'change'])->name('admin.shifts.change');
+
     });
 
     // HOST ROUTES

@@ -23,13 +23,13 @@
     html,body{height:100%}
     body{
       margin:0;
-      background: #e5e7eb
+      background: #e5e7eb;
       color:#111827;
       -webkit-font-smoothing:antialiased;
       padding:18px;
-    }
+    } 
 
-    .wrap{max-width:1100px;margin:0 auto;display:grid;gap:16px}
+    .wrap{max-width:1300px;margin:0 auto;display:grid;gap:16px}
     .card{background:var(--card);padding:16px;border-radius:var(--card-radius);box-shadow:0 6px 20px rgba(0,0,0,0.1);}
     h2{margin:0 0 10px 0;font-size:18px}
     .muted{color:var(--muted);font-size:13px}
@@ -123,13 +123,24 @@
         <div>
           <h2>Admin Dashboard</h2>
 
-          <p class="muted" id="subtitle">Active Guests Currently in the Lounge</p>
+          <p class="muted" id="subtitle">Active Guests</p>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn" id="showActive">Active Guests</button>
           <button class="btn ghost" id="showHistory">Check-out History</button>
           <button class="btn ghost" onclick="openHoldSessionsModal()">🕓 Hold Sessions</button>
           <button class="btn ghost" onclick="openGuestSearchModal()">🔍 Search Guest</button>
+          <form
+            action="{{ route('admin.shifts.change') }}"
+            method="POST"
+            onsubmit="return confirm('Close current shift and start a new one?')">
+            @csrf
+            <button class="btn ghost">
+              🔁 Change Shift
+            </button>
+          </form>
+          <button class="btn ghost" onclick="openExpenseModal()">💸 Add Expense</button>
+
           <button class="btn ghost" onclick="window.location.href='{{ route('admin.menu.index') }}'" id="menu">Edit Menu</button>
         </div>
       </div>
@@ -245,17 +256,13 @@
             View Profile
           </button>
 
-          <form
-            action="{{ route('sessions.end', $session->id) }}"
-            method="POST"
-            style="display:inline;"
-            onsubmit="return confirm('Are you sure you want to end this session?');"
-          >
-            @csrf
-            <button type="submit" class="btn ghost" id="end">
-              End Session
-            </button>
-          </form>
+          <button
+  class="btn ghost"
+  onclick="openEndSessionModal({{ $session->id }})"
+  id="end">
+  End Session
+</button>
+
         </td>
 
       </tr>
@@ -413,6 +420,7 @@
       <th>Duration</th>
       <th>Type</th>
       <th>Bill</th>
+      <th>Payment</th>
       <th>Status</th>
       <th style="text-align:right;">Actions</th>
     </tr>
@@ -422,7 +430,7 @@
   @foreach ($historySessions as $date => $sessions)
     {{-- عنوان اليوم --}}
 
-    @php
+@php
   $daySessions = collect($sessions);
 
   $dayTotal = $daySessions->sum(function ($s) {
@@ -436,18 +444,113 @@
 
       return (float) ($s->bill_amount ?? 0) + $drinksTotal;
   });
+
+  $expensesTotal = \App\Models\Expense::whereDate(
+      'expense_date',
+      $date
+  )->sum('amount');
+
+    $dayExpenses = \App\Models\Expense::whereDate(
+      'expense_date',
+      $date
+  )->orderBy('created_at', 'asc')->get();
+
+
+  $netCash = $dayTotal - $expensesTotal;
 @endphp
+
 
 
 <tr style="background: #efefef;">
   <td colspan="10" style="text-align:center; font-weight:bold; color:#333;">
     📅 {{ \Carbon\Carbon::parse($date)->translatedFormat('l, d M Y') }}
-    <span style="margin-left:12px; font-weight:600; color:#111;">— Total: {{ number_format($dayTotal, 2) }} EGP</span>
+
+    <span style="margin-left:12px;">
+      Income: {{ number_format($dayTotal, 2) }} EGP
+    </span>
+
+@if($expensesTotal > 0)
+  <a
+    href="#"
+    style="margin-left:12px;color:#dc2626;font-weight:600;cursor:pointer;"
+    data-bs-toggle="modal"
+    data-bs-target="#expensesModal"
+    onclick='fillExpensesModal(@json($dayExpenses), "{{ $date }}")'
+  >
+    Expenses: -{{ number_format($expensesTotal, 2) }} EGP
+  </a>
+@endif
+
+
+
+    <span style="margin-left:12px;font-weight:700;">
+      Net: {{ number_format($netCash, 2) }} EGP
+    </span>
   </td>
 </tr>
 
+
   {{-- السيشنات الخاصة باليوم --}}
-  @foreach ($sessions as $session)
+  @php
+  $sessionsByShift = collect($sessions)->groupBy('shift_id');
+  @endphp
+
+  @foreach ($sessionsByShift as $shiftId => $shiftSessions)
+
+  @php
+    $shift = \App\Models\Shift::find($shiftId);
+    $isTodayShift =
+    $shift &&
+    $shift->ended_at === null &&
+    \Carbon\Carbon::parse($shift->started_at)->isToday();
+
+$isClosed = $shift && $shift->ended_at !== null;
+
+  @endphp
+
+  @php
+  $shiftTotal = $shiftSessions->sum(function ($s) {
+
+    $drinksTotal = $s->orders
+      ->where('status', 'Received')
+      ->sum(function ($order) {
+        return $order->total_price
+          ?? (($order->unit_price ?? 0) * ($order->quantity ?? 1));
+      });
+
+    return (float) ($s->bill_amount ?? 0) + $drinksTotal;
+  });
+@endphp
+
+
+  {{-- ===== SHIFT DIVIDER ===== --}}
+  <tr style="background: {{ $isClosed ? '#fde2e2' : '#dcfce7' }};">
+    <td colspan="10" style="text-align:center; font-weight:600; color:#333;">
+@if($shift)
+    @if($isTodayShift)
+        🟢 Shift #{{ $shift->shift_number }} — Now
+    @else
+        🔴 Shift #{{ $shift->shift_number }}
+        —
+        {{ \Carbon\Carbon::parse($shift->started_at)->format('H:i') }}
+        →
+        {{ $shift->ended_at
+            ? \Carbon\Carbon::parse($shift->ended_at)->format('H:i')
+            : \Carbon\Carbon::parse($shift->started_at)->endOfDay()->format('H:i')
+        }}
+    @endif
+@else
+    ⚠️ Unknown shift
+@endif
+      <span style="margin-left:12px; font-weight:600; color:#111;">— Total: {{ number_format($shiftTotal, 2) }} EGP</span>
+    </td>
+  </tr>
+  {{-- ===== END SHIFT DIVIDER ===== --}}
+
+  @foreach ($shiftSessions as $session)
+    {{-- 👇 سيب كود عرض السيشن زي ما هو حرفيًا --}}
+
+  
     <tr>
       <td data-label="Guest Name">{{ $session->guest->fullname ?? 'N/A' }}</td>
 
@@ -473,21 +576,50 @@
         @endif
       </td>
 
-      @php
-  $drinksTotal = $session->orders
-      ->where('status', 'Received')
-      ->sum(function ($order) {
-          return $order->total_price
-              ?? (($order->unit_price ?? 0) * ($order->quantity ?? 1));
-      });
+@php
+  $sessionOrdersTotal = app(\App\Http\Controllers\AdminController::class)
+      ->ordersTotal($session->orders);
 
-  $grandTotal = ($session->bill_amount ?? 0) + $drinksTotal;
+  // Staff IDs
+  if (in_array($session->guest_id, [56, 26])) {
+      $sessionTotal = $sessionOrdersTotal;
+  } else {
+      $sessionTotal = ($session->bill_amount ?? 0) + $sessionOrdersTotal;
+  }
 @endphp
 
-<td data-label="Bill">
-  {{ number_format($grandTotal, 2) }} EGP
-</td>
+      <td data-label="Bill">
+        {{ number_format($sessionTotal, 2) }} EGP
+      </td>
+      <td data-label="Payment">
+  @php
+    $method = $session->payment_method;
+  @endphp
 
+  @if($method === 'cash')
+    <span class="badge" style="background:#16a34a;color:white;">
+      CASH
+    </span>
+
+  @elseif($method === 'wallet')
+    <span class="badge" style="background:#2563eb;color:white;">
+      WALLET
+    </span>
+
+  @elseif($method === 'instapay')
+    <span class="badge" style="background:#7c3aed;color:white;">
+      INSTAPAY
+    </span>
+  
+  @elseif($method === 'dual payment')
+    <span class="badge" style="background:#7c3aed;color:white;">
+      Dual Payment
+    </span>
+
+  @else
+    <span class="muted">—</span>
+  @endif
+</td>
 
       <td data-label="Status">
         <span class="status checkout">Checked Out</span>
@@ -495,13 +627,11 @@
       <td data-label="Actions" style="text-align:right;">
           <button class="btn" onclick="window.location.href='{{ url('/profile/' . $session->guest->id) }}'">View Profile</button>
           <a id="print" href="{{ route('sessions.check', $session->id) }}" class="btn ghost" target="_blank">Print The Check</a>
-
-
-
       </td>
     </tr>
   @endforeach
 @endforeach
+@endforeach {{-- historySessions --}}
 
 
     @if($historySessions->isEmpty())
@@ -513,83 +643,10 @@
 </table>
     </div>
   </div>
+  
       <!-- Hidden input to capture QR scans -->
     <input type="text" id="hiddenScanner" style="opacity:0;position:absolute;left:-9999px;">
     <!-- <input type="text" id="hiddenScanner" > -->
-
-  <!-- <script>
-    const scannerInput = document.getElementById('hiddenScanner');
-    let scannerEnabled = true;
-
-    // حافظ على الفوكس
-    function keepFocus() {
-        if (scannerEnabled) {
-            scannerInput.focus();
-        }
-    }
-    
-    setInterval(keepFocus, 1000);
-    keepFocus();
-
-      document.addEventListener('focusin', function (e) {
-    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
-      scannerEnabled = false;
-    }
-  });
-
-  document.addEventListener('focusout', function (e) {
-    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
-      setTimeout(() => {
-        scannerEnabled = true;
-        scannerInput.focus();
-      }, 300);
-    }
-  });
-    // إضافة بسيطة مع debounce بدلاً من dispatch فوري
-    let dispatchTimeout = null;
-    scannerInput.addEventListener('input', function () {
-      clearTimeout(dispatchTimeout);
-      // نأجل تنفيذ change لحد ما يوقف الإدخال 120ms
-      dispatchTimeout = setTimeout(() => {
-        scannerInput.dispatchEvent(new Event('change'));
-      }, 120);
-    });
-
-    // باقي سكريبتك بدون أي تعديل
-    scannerInput.addEventListener('change', function () {
-  const rawValue = scannerInput.value;
-  scannerInput.value = '';
-
-  console.log('RAW SCAN:', rawValue);
-
-  const match = rawValue.match(/=(\d+)/);
-
-  console.log('MATCH:', match);
-
-  if (!match) {
-    alert('NO MATCH FOUND');
-    return;
-  }
-
-  const guestId = match[1];
-
-  console.log('GUEST ID SENT:', guestId);
-
-  fetch(`/scan?guest_id=${guestId}`)
-    .then(res => res.json())
-    .then(data => {
-      console.log('SERVER RESPONSE:', data);
-      if (data.status === 'success') {
-        location.reload();
-      } else {
-        alert('⚠️ ' + data.message);
-      }
-    });
-});
-
-</script> -->
-
-
 
   <script>
     const activeBtn = document.getElementById('showActive');
@@ -601,7 +658,7 @@
     activeBtn.addEventListener('click', () => {
       activeTable.style.display = 'table';
       historyTable.style.display = 'none';
-      subtitle.textContent = 'Active Guests Currently in the Lounge';
+      subtitle.textContent = 'Active Guests';
       activeBtn.classList.remove('ghost');
       historyBtn.classList.add('ghost');
     });
@@ -1294,6 +1351,276 @@ function rejectHold(guestId) {
 function openHoldSessionsModal() {
   loadHoldSessions();
   holdSessionsModal.show();
+}
+</script>
+
+<div class="modal fade" id="expenseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <form method="POST" action="{{ route('admin.expenses.store') }}">
+        @csrf
+
+        <div class="modal-header">
+          <h5 class="modal-title">Add Expense</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Amount (EGP)</label>
+            <input type="number" step="0.01" min="0.01"
+              name="amount"
+              class="form-control"
+              required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Note (optional)</label>
+            <input type="text"
+              name="note"
+              class="form-control">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn ghost" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn">Save</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const expenseModal = new bootstrap.Modal(
+  document.getElementById('expenseModal')
+);
+
+function openExpenseModal() {
+  expenseModal.show();
+}
+</script>
+
+
+<div class="modal fade" id="expensesModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="expensesModalTitle">💸 Expenses</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Amount</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="expensesModalBody">
+            <tr>
+              <td colspan="3" class="text-center muted">
+                No expenses
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn ghost" data-bs-dismiss="modal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function openExpensesModal(expenses, date) {
+
+  const modalEl = document.getElementById('expensesModal');
+  if (!modalEl) {
+    alert('Expenses modal not found');
+    return;
+  }
+
+  const modal = new bootstrap.Modal(modalEl);
+
+  const title = document.getElementById('expensesModalTitle');
+  const body  = document.getElementById('expensesModalBody');
+
+  title.textContent = `💸 Expenses — ${date}`;
+  body.innerHTML = '';
+
+  if (!expenses || !expenses.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="3" class="text-center muted">
+          No expenses
+        </td>
+      </tr>
+    `;
+  } else {
+    expenses.forEach(e => {
+      body.innerHTML += `
+        <tr>
+          <td>${(e.created_at ?? '').substring(11,16)}</td>
+          <td style="color:#dc2626;font-weight:600;">
+            -${parseFloat(e.amount).toFixed(2)} EGP
+          </td>
+          <td>${e.note ?? '—'}</td>
+        </tr>
+      `;
+    });
+  }
+
+  modal.show();
+}
+</script>
+
+
+<script>
+function fillExpensesModal(expenses, date) {
+
+  const title = document.getElementById('expensesModalTitle');
+  const body  = document.getElementById('expensesModalBody');
+
+  title.textContent = `💸 Expenses — ${date}`;
+  body.innerHTML = '';
+
+  if (!expenses || !expenses.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="3" class="text-center muted">
+          No expenses
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  expenses.forEach(e => {
+    body.innerHTML += `
+      <tr>
+        <td>${(e.created_at ?? '').substring(11,16)}</td>
+        <td style="color:#dc2626;font-weight:600;">
+          -${parseFloat(e.amount).toFixed(2)} EGP
+        </td>
+        <td>${e.note ?? '—'}</td>
+      </tr>
+    `;
+  });
+}
+</script>
+
+<div class="modal fade" id="endSessionModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Session Checkout</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- 🧾 Receipt Preview -->
+        <iframe
+          id="checkoutFrame"
+          src=""
+          style="width:100%;height:60vh;border:none;"
+        ></iframe>
+
+        <hr>
+
+        <div class="mb-3">
+          <label class="form-label">Payment Method</label>
+          <select class="form-select" id="paymentMethod">
+            <option value="cash">Cash</option>
+            <option value="wallet">Wallet</option>
+            <option value="instapay">InstaPay</option>
+            <option value="dual payment">Dual Payment</option>
+          </select>
+        </div>
+
+        <!-- <div class="mb-3">
+          <button class="btn ghost" onclick="openDiscountFromCheckout()">
+            💸 Apply Discount
+          </button>
+        </div> -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn ghost" data-bs-dismiss="modal">
+          Cancel
+        </button>
+
+        <form
+            id="finalEndSessionForm"
+            method="POST"
+            style="display:inline;"
+          >
+            @csrf
+
+            <input
+              type="hidden"
+              name="payment_method"
+              id="payment_method_input"
+            >
+
+            <button
+              type="submit"
+              class="btn btn-danger"
+              onclick="return confirm('Are you sure you want to end this session?');"
+            >
+              End Session
+            </button>
+          </form>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let endSessionModal = new bootstrap.Modal(
+  document.getElementById('endSessionModal')
+);
+
+function openEndSessionModal(sessionId) {
+
+  const iframe = document.getElementById('checkoutFrame');
+  if (iframe) {
+    iframe.src = `/check/${sessionId}`;
+  }
+
+  const form = document.getElementById('finalEndSessionForm');
+  form.action = `/sessions/${sessionId}/end`;
+
+  endSessionModal.show();
+}
+</script>
+
+
+
+<script>
+const paymentSelect = document.getElementById('paymentMethod');
+const paymentInput  = document.getElementById('payment_method_input');
+
+if (paymentSelect && paymentInput) {
+
+  // default
+  paymentInput.value = paymentSelect.value;
+
+  paymentSelect.addEventListener('change', function () {
+    paymentInput.value = this.value;
+  });
 }
 </script>
 

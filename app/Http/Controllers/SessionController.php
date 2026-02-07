@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ShiftService;
 use App\Models\Session;
+use App\Models\Shift;
 use App\Models\Guest;
 use App\Models\SubGuest;
 use Illuminate\Http\Request;
@@ -112,74 +114,65 @@ class SessionController extends Controller
 
 public function endSession(Session $session)
 {
-    // احسب الـ duration
+    // 🕒 احسب الـ duration
     $checkIn = \Carbon\Carbon::parse($session->check_in);
     $checkOut = \Carbon\Carbon::now();
     $durationMinutes = $checkIn->diffInMinutes($checkOut);
 
-    // احسب الفاتورة بناءً على rate_per_hour
-    // $hours = $durationMinutes / 60;
-    // $billAmount = 0;
-    // $grace = 0.25;
+    // 🟢 الشيفت الحالي
+    $activeShift = app(ShiftService::class)->getOrCreateTodayShift();
 
-    // switch (true) {
+    // ✅ Staff IDs (ثابتين)
+    $isStaff = in_array($session->guest_id, [56, 26]);
 
-    //     case ($hours < 1 + $grace):
-    //         $billAmount = 25;
-    //         break;
+    // =========================
+    // 🧾 Session Fee
+    // =========================
+    if ($isStaff) {
 
-    //     case ($hours >= 1 && $hours < 3 + $grace):
-    //         $billAmount = 50;
-    //         break;
+        // ❌ Staff ملوش Session Fee
+        $baseBill = 0;
 
-    //     case ($hours >= 3 && $hours < 6 + $grace):
-    //         $billAmount = 80;
-    //         break;
+        // نقفل أي subGuests مفتوحة (تنضيف بس)
+        foreach ($session->subGuests()->whereNull('left_at')->get() as $sg) {
+            $sg->update(['left_at' => now()]);
+        }
 
-    //     case ($hours >= 6 && $hours < 8 + $grace):
-    //         $billAmount = 100;
-    //         break;
+    } elseif ($session->session_type === 'regular') {
 
-    //     case ($hours >= 8 && $hours < 12 + $grace):
-    //         $billAmount = 120;
-    //         break;
+        // Regular Guest
+        foreach ($session->subGuests()->whereNull('left_at')->get() as $sg) {
+            $sg->update(['left_at' => now()]);
+        }
 
-    //     case ($hours >= 12 + $grace && $hours <= 24):
-    //         $billAmount = 150;
-    //         break;
+        $baseBill = $this->calculateRegularFromSubGuests($session);
 
-    //     default:
-    //         $billAmount = 1;
-    //         break;
-    // }
-    // $billAmount = $billAmount * $session->people_count;
-// الحساب الأساسي
-if ($session->session_type === 'regular') {
+    } else {
 
-    foreach ($session->subGuests()->whereNull('left_at')->get() as $sg) {
-        $sg->update(['left_at' => now()]);
+        // Room session
+        $baseBill = $this->calculateSessionBill($session);
     }
 
-    $baseBill = $this->calculateRegularFromSubGuests($session);
+    // =========================
+    // 💸 Discount
+    // =========================
+    $discountResult = $this->applySessionDiscount($session, $baseBill);
 
-} else {
-
-    $baseBill = $this->calculateSessionBill($session);
-}
-
-// ✅ طبّق الخصم
-$discountResult = $this->applySessionDiscount($session, $baseBill);
-
-// ✅ احفظ الرقم النهائي بعد الخصم
-$session->update([
-    'check_out' => $checkOut,
-    'duration_minutes' => $durationMinutes,
-    'bill_amount' => $discountResult['final'],
-]);
-
+    // =========================
+    // 💾 Save session
+    // =========================
+    $session->update([
+        'check_out'         => $checkOut,
+        'duration_minutes' => $durationMinutes,
+        'bill_amount'      => $isStaff ? 0 : $discountResult['final'],
+        'shift_id'         => $activeShift?->id,
+        'payment_method'   => request('payment_method'),
+    ]);
 
     return redirect()->back()->with('success', 'Session ended successfully!');
 }
+
+
 
 public function addSubGuest(Request $request, Session $session)
 {
@@ -241,161 +234,168 @@ public function endSubGuest(SubGuest $subGuest)
 
 public function check($id)
 {
-    // جلب السيشن مع الجيست والأوردرات والمنتجات
-    $session = \App\Models\Session::with(['guest','orders.menuItem'])->findOrFail($id);
+    // جلب السيشن مع الجيست والأوردرات
+    $session = \App\Models\Session::with(['guest','orders.menuItem','subGuests'])
+        ->findOrFail($id);
 
-    // نحسب الديوريشن
-    $checkIn = \Carbon\Carbon::parse($session->check_in);
-    $checkOut = $session->check_out ? \Carbon\Carbon::parse($session->check_out) : \Carbon\Carbon::now();
+    // =========================
+    // Duration (Preview-safe)
+    // =========================
+    $checkIn  = \Carbon\Carbon::parse($session->check_in);
+    $checkOut = $session->check_out
+        ? \Carbon\Carbon::parse($session->check_out)
+        : \Carbon\Carbon::now();
+
     $duration = $checkIn->diff($checkOut);
-    // عدد الساعات كفواصل (مثال: 1.5 ساعة)
-    $hoursFloat = ($duration->days * 24) + $duration->h + ($duration->i / 60);
-    $grace = 0.25;
-    // حساب الفاتورة للسيشن (نفس المنطق اللي عندك)
-    switch (true) {
 
-        // 1 → 3.5
-        case ($hoursFloat >= 1 && $hoursFloat < (3 + $grace)):
-            $bill = 50;
-            break;
-    
-        // 3 → 6.5
-        case ($hoursFloat >= 3 && $hoursFloat < (6 + $grace)):
-            $bill = 80;
-            break;
-    
-        // 6 → 12.5
-        case ($hoursFloat >= 6 && $hoursFloat < (8 + $grace)):
-            $bill = 100;
-            break;
-
-        case ($hoursFloat >= 8 && $hoursFloat < (12 + $grace)):
-            $bill = 120;
-            break;
-    
-        // 12.5 → 24
-        case ($hoursFloat >= (12 + $grace) && $hoursFloat <= 24):
-            $bill = 120;
-            break;
-    
-        // default
-        default:
-            $bill = 1;
-            break;
-    }
-    // $bill = $bill * $session->people_count;
-    // $bill = $this->calculateSessionBill($session);
+    // =========================
+    // Session Fee (PREVIEW)
+    // =========================
     if ($session->session_type === 'regular') {
 
-    // اقفل أي SubGuest لسه Active (للمعاينة بس)
-    foreach ($session->subGuests->whereNull('left_at') as $sg) {
-        $sg->left_at = now();
+        $bill = 0;
+
+        foreach ($session->subGuests as $sg) {
+
+            $in  = \Carbon\Carbon::parse($sg->joined_at);
+            $out = $sg->left_at
+                ? \Carbon\Carbon::parse($sg->left_at)
+                : \Carbon\Carbon::now(); // 👈 Preview
+
+            $diff  = $in->diff($out);
+            $hours = ($diff->days * 24) + $diff->h + ($diff->i / 60);
+            $grace = 0.5;
+
+            if ($hours < 1 + $grace) {
+                $price = 25;
+            } elseif ($hours < 3 + $grace) {
+                $price = 50;
+            } elseif ($hours < 6 + $grace) {
+                $price = 80;
+            } elseif ($hours < 8 + $grace) {
+                $price = 100;
+            } elseif ($hours < 12 + $grace) {
+                $price = 120;
+            } else {
+                $price = 150;
+            }
+
+            $bill += $price;
+        }
+
+    } else {
+        // Room session preview
+        $bill = $this->calculateSessionBill($session);
     }
 
-    $bill = $this->calculateRegularFromSubGuests($session);
-
-} else {
-    // room session زي ما هي
-    $bill = $this->calculateSessionBill($session);
-}
-
-
-    // نجيب كل الأوردرات (ما عدا الملغية) عشان نعرض تفاصيلها،
-    // لكن لما نحسب المجموع هنأخد بس ال Done
+    // =========================
+    // Drinks (Received only)
+    // =========================
     $orders = $session->orders->whereNotIn('status', ['Canceled']);
 
-    $drinksTotal = 0;
+    $drinksTotal   = 0;
     $drinksDetails = [];
 
     foreach ($orders as $order) {
-        // حساب unitPrice و subtotal (fallbacks آمنة)
+
         if (!is_null($order->total_price)) {
-            $subtotal = (float) $order->total_price;
-            $unitPrice = $order->unit_price ?? ($order->quantity ? $subtotal / $order->quantity : 0);
+            $subtotal  = (float) $order->total_price;
+            $unitPrice = $order->unit_price
+                ?? ($order->quantity ? $subtotal / $order->quantity : 0);
         } else {
-            $unitPrice = $order->unit_price ?? (optional($order->menuItem)->price ?? 0);
-            $qty = $order->quantity ?? 1;
-            $subtotal = $unitPrice * $qty;
+            $unitPrice = $order->unit_price
+                ?? (optional($order->menuItem)->price ?? 0);
+            $qty       = $order->quantity ?? 1;
+            $subtotal  = $unitPrice * $qty;
         }
 
         $qty = $order->quantity ?? 1;
 
-        // فقط الأوردرات اللي حالتهم Received يضيفوا للمجموع
+        // ✅ نحسب Received فقط
         if ($order->status === 'Received') {
             $drinksTotal += $subtotal;
         }
 
         $drinksDetails[] = [
-            'name' => optional($order->menuItem)->name ?? 'Item #' . $order->menu_item_id,
-            'price' => $unitPrice,
-            'qty' => $qty,
+            'name'     => optional($order->menuItem)->name
+                ?? 'Item #' . $order->menu_item_id,
+            'price'    => $unitPrice,
+            'qty'      => $qty,
             'subtotal' => $subtotal,
-            'status' => $order->status,
+            'status'   => $order->status,
         ];
     }
 
-    // $grandTotal = round($bill + $drinksTotal, 2);
+    // =========================
+    // Discount (Preview-safe)
+    // =========================
     $sessionResult = $this->applySessionDiscount($session, $bill);
 
     $billOriginal = $sessionResult['original'];
     $billDiscount = $sessionResult['discount'];
     $billFinal    = $sessionResult['final'];
 
+    // =========================
+    // Grand Total (Preview)
+    // =========================
     $grandTotal = round($billFinal + $drinksTotal, 2);
 
-
+    // =========================
+    // SubGuests Breakdown
+    // =========================
     $subGuestsBreakdown = [];
 
-if ($session->session_type === 'regular') {
+    if ($session->session_type === 'regular') {
 
-    foreach ($session->subGuests as $sg) {
+        foreach ($session->subGuests as $sg) {
 
-        $in  = \Carbon\Carbon::parse($sg->joined_at);
-        $out = $sg->left_at
-            ? \Carbon\Carbon::parse($sg->left_at)
-            : \Carbon\Carbon::now();
+            $in  = \Carbon\Carbon::parse($sg->joined_at);
+            $out = $sg->left_at
+                ? \Carbon\Carbon::parse($sg->left_at)
+                : \Carbon\Carbon::now();
 
-        $diff = $in->diff($out);
-        $hours = ($diff->days * 24) + $diff->h + ($diff->i / 60);
-        $grace = 0.5;
+            $diff  = $in->diff($out);
+            $hours = ($diff->days * 24) + $diff->h + ($diff->i / 60);
+            $grace = 0.5;
 
-        // نفس أسعار regular
-        if ($hours < 1 + $grace) {
-            $price = 25;
-        } elseif ($hours < 3 + $grace) {
-            $price = 50;
-        } elseif ($hours < 6 + $grace) {
-            $price = 80;
-        } elseif ($hours < 8 + $grace) {
-            $price = 100;
-        } elseif ($hours < 12 + $grace) {
-            $price = 120;
-        } else {
-            $price = 150;
+            if ($hours < 1 + $grace) {
+                $price = 25;
+            } elseif ($hours < 3 + $grace) {
+                $price = 50;
+            } elseif ($hours < 6 + $grace) {
+                $price = 80;
+            } elseif ($hours < 8 + $grace) {
+                $price = 100;
+            } elseif ($hours < 12 + $grace) {
+                $price = 120;
+            } else {
+                $price = 150;
+            }
+
+            $subGuestsBreakdown[] = [
+                'name'     => $sg->name,
+                'duration' => $diff->h . 'h ' . $diff->i . 'm',
+                'price'    => $price,
+            ];
         }
-
-        $subGuestsBreakdown[] = [
-            'name'     => $sg->name,
-            'duration' => $diff->h . 'h ' . $diff->i . 'm',
-            'price'    => $price,
-        ];
     }
-}
 
-
+    // =========================
+    // Render Receipt (Preview)
+    // =========================
     return view('gest.check', compact(
-  'session',
-  'duration',
-  'billOriginal',
-  'billDiscount',
-  'billFinal',
-  'drinksTotal',
-  'drinksDetails',
-  'grandTotal',
-  'subGuestsBreakdown'
-));
-
+        'session',
+        'duration',
+        'billOriginal',
+        'billDiscount',
+        'billFinal',
+        'drinksTotal',
+        'drinksDetails',
+        'grandTotal',
+        'subGuestsBreakdown'
+    ));
 }
+
 
 public function updatePeople(Request $request, Session $session)
 {
