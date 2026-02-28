@@ -20,15 +20,11 @@ class GuestController extends Controller
     $currentSession = $guest->sessions()->latest()->first();
 
     $liveSession = null;
-
-    if ($currentSession && !$currentSession->check_out) {
-        $liveSession = GuestSessionPresenter::live($currentSession);
-    }
-
     $liveBill = null;
 
     if ($currentSession && !$currentSession->check_out) {
         $liveBill = app(\App\Http\Controllers\SessionController::class)->calculateSessionBill($currentSession);
+        $liveSession = GuestSessionPresenter::live($currentSession, $liveBill);
     }
 
 
@@ -316,7 +312,8 @@ class GuestController extends Controller
         ]);
     }
 
-    $snapshot = \App\Presenters\GuestSessionPresenter::live($currentSession);
+    $liveBill = app(\App\Http\Controllers\SessionController::class)->calculateSessionBill($currentSession);
+    $snapshot = \App\Presenters\GuestSessionPresenter::live($currentSession, $liveBill);
 
     return response()->json([
         'active' => true,

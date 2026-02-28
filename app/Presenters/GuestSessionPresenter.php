@@ -9,13 +9,13 @@ class GuestSessionPresenter
 {
     /**
      * Snapshot لسشن شغالة دلوقتي
+     * 
+     * @param Session $session
+     * @param float $grandTotal - Calculated bill from SessionController::calculateSessionBill()
+     * @return array
      */
-    public static function live(Session $session): array
+    public static function live(Session $session, float $grandTotal): array
     {
-        $total = app(\App\Http\Controllers\SessionController::class)
-    ->calculateSessionBill($session);
-
-
         $checkIn = Carbon::parse($session->check_in);
         $now = now();
 
@@ -29,8 +29,8 @@ class GuestSessionPresenter
             'started_at'   => $checkIn->format('H:i'),
             'duration'     => $duration,
 
-            // 🔹 calculateSessionBill بيرجع الإجمالي فقط
-            'grand_total'  => $total,
+            // Use the passed calculated value - single source of truth
+            'grand_total'  => $grandTotal,
 
             'has_orders'   => $session->orders()->exists(),
         ];

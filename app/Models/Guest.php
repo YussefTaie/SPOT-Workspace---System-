@@ -67,4 +67,12 @@ class Guest extends Model
     {
         return $this->hasMany(Session::class);
     }
+
+    /**
+     * Get all course enrollments for this guest.
+     */
+    public function courseEnrollments()
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
 }

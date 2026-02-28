@@ -168,6 +168,16 @@
 
         Route::post('/shifts/change', [\App\Http\Controllers\Admin\ShiftController::class, 'change'])->name('admin.shifts.change');
 
+        // Courses Management
+        Route::get('/courses', [\App\Http\Controllers\Admin\CourseController::class, 'index'])->name('admin.courses.index');
+        Route::post('/courses', [\App\Http\Controllers\Admin\CourseController::class, 'store'])->name('admin.courses.store');
+        Route::get('/courses/{course}', [\App\Http\Controllers\Admin\CourseController::class, 'show'])->name('admin.courses.show');
+        Route::put('/courses/{course}', [\App\Http\Controllers\Admin\CourseController::class, 'update'])->name('admin.courses.update');
+        Route::delete('/courses/{course}', [\App\Http\Controllers\Admin\CourseController::class, 'destroy'])->name('admin.courses.destroy');
+        Route::post('/courses/{course}/enrollments', [\App\Http\Controllers\Admin\CourseController::class, 'storeEnrollment'])->name('admin.courses.enrollments.store');
+        Route::put('/enrollments/{courseEnrollment}', [\App\Http\Controllers\Admin\CourseController::class, 'updateEnrollment'])->name('admin.courses.enrollments.update');
+        Route::delete('/enrollments/{courseEnrollment}', [\App\Http\Controllers\Admin\CourseController::class, 'destroyEnrollment'])->name('admin.courses.enrollments.destroy');
+
     });
 
     // HOST ROUTES

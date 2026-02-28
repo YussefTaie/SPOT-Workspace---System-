@@ -499,11 +499,11 @@ public function calculateSessionBill(Session $session)
 
         case 1:
         case 2:
-            $bill = 200 + max(0, $billableHours - 1) * 150;
+            $bill = 250 + max(0, $billableHours - 1) * 200;
             break;
 
         case 3:
-            $bill = 250 + max(0, $billableHours - 1) * 200;
+            $bill = 300 + max(0, $billableHours - 1) * 250;
             break;
 
         case 4:
