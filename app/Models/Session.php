@@ -41,4 +41,39 @@ class Session extends Model
     {
         return $this->hasMany(\App\Models\SubGuest::class);
     }
+
+    // =========================================================
+    // Billing — single source of truth
+    // =========================================================
+
+    /**
+     * Sum of drink orders with status Done or Received.
+     * Uses a fresh DB query (not eager-loaded collection)
+     * so the result is always accurate.
+     */
+    public function drinksTotal(): float
+    {
+        return (float) $this->orders()
+            ->whereIn('status', ['Done', 'Received'])
+            ->sum('total_price');
+    }
+
+    /**
+     * Session fee after discount.
+     * bill_amount is set by SessionController::endSession() to
+     * the discounted session fee. Zero for open/staff sessions.
+     */
+    public function sessionFee(): float
+    {
+        return (float) ($this->bill_amount ?? 0);
+    }
+
+    /**
+     * Grand total = session fee (after discount) + drinks total.
+     * This is the canonical total for closed sessions.
+     */
+    public function grandTotal(): float
+    {
+        return $this->sessionFee() + $this->drinksTotal();
+    }
 }

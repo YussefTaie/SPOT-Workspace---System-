@@ -582,14 +582,12 @@ $isClosed = $shift && $shift->ended_at !== null;
       </td>
 
 @php
-  $sessionOrdersTotal = app(\App\Http\Controllers\AdminController::class)
-      ->ordersTotal($session->orders);
-
-  // Staff IDs
+  // Single source of truth: Session model methods
   if (in_array($session->guest_id, [56, 26])) {
-      $sessionTotal = $sessionOrdersTotal;
+      // Staff sessions: no session fee, drinks only
+      $sessionTotal = $session->drinksTotal();
   } else {
-      $sessionTotal = ($session->bill_amount ?? 0) + $sessionOrdersTotal;
+      $sessionTotal = $session->grandTotal();
   }
 @endphp
 

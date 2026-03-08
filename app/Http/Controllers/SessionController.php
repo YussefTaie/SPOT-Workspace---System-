@@ -289,11 +289,11 @@ public function check($id)
     }
 
     // =========================
-    // Drinks (Received only)
+    // Drinks — build display details (all non-Canceled)
+    // Total is calculated by the Session model method
     // =========================
     $orders = $session->orders->whereNotIn('status', ['Canceled']);
 
-    $drinksTotal   = 0;
     $drinksDetails = [];
 
     foreach ($orders as $order) {
@@ -311,10 +311,6 @@ public function check($id)
 
         $qty = $order->quantity ?? 1;
 
-        // ✅ نحسب Done + Received (unified with admin dashboard)
-        if (in_array($order->status, ['Done', 'Received'])) {
-            $drinksTotal += $subtotal;
-        }
 
         $drinksDetails[] = [
             'name'     => optional($order->menuItem)->name
@@ -325,6 +321,9 @@ public function check($id)
             'status'   => $order->status,
         ];
     }
+
+    // Single source of truth: delegate to Session model
+    $drinksTotal = $session->drinksTotal();
 
     // =========================
     // Discount (Preview-safe)
@@ -337,6 +336,8 @@ public function check($id)
 
     // =========================
     // Grand Total (Preview)
+    // Note: $billFinal is recalculated live for accurate receipt preview.
+    // For closed sessions the dashboard uses $session->grandTotal() directly.
     // =========================
     $grandTotal = round($billFinal + $drinksTotal, 2);
 

@@ -53,13 +53,13 @@ class GuestSessionPresenter
 
     $duration = floor($minutes / 60) . 'h ' . ($minutes % 60) . 'm';
 
-    // 🔥 الحقايق من السيستم
-    $sessionAfterDiscount = (float) $session->bill_amount;   // 100
-    $discount             = (float) ($session->discount_value ?? 0); // 60
-    $sessionFee           = $sessionAfterDiscount + $discount; // 160
-    $drinksTotal           = (float) $session->orders->sum('total_price'); // 125
+    // Delegate to Session model — single source of truth
+    $sessionAfterDiscount = $session->sessionFee();
+    $discount             = (float) ($session->discount_value ?? 0);
+    $sessionFee           = $sessionAfterDiscount + $discount;
+    $drinksTotal          = $session->drinksTotal();   // Done + Received only
 
-    $grandTotal = $sessionAfterDiscount + $drinksTotal; // 225 ✅
+    $grandTotal = $session->grandTotal();              // sessionFee() + drinksTotal()
 
     return [
         // Header
