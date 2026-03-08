@@ -140,11 +140,11 @@
               🔁 Change Shift
             </button>
           </form>
-          <button class="btn ghost"
+          <!-- <button class="btn ghost"
             onclick="window.open('{{ route('admin.courses.index') }}', '_blank')"
             id="menu">
             Courses
-            </button>
+            </button> -->
 
         </div>
       </div>

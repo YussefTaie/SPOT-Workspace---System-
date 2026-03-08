@@ -311,8 +311,8 @@ public function check($id)
 
         $qty = $order->quantity ?? 1;
 
-        // ✅ نحسب Received فقط
-        if ($order->status === 'Received') {
+        // ✅ نحسب Done + Received (unified with admin dashboard)
+        if (in_array($order->status, ['Done', 'Received'])) {
             $drinksTotal += $subtotal;
         }
 

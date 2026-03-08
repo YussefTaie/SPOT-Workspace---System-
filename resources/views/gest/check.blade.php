@@ -134,14 +134,7 @@
 
     <h3 style="margin-top:16px">Drinks</h3>
 
-{{-- احسب إجمالي المشروبات اللي خلصت فعلاً (status = Done) --}}
-@php
-  $drinksTotal = $session->orders
-      ->where('status', 'Done')
-      ->sum(function($o) {
-          return $o->total_price ?? ($o->unit_price * ($o->quantity ?? 1));
-      });
-@endphp
+{{-- $drinksTotal and $grandTotal are calculated by SessionController::check() --}}
 
 @if(!empty($drinksDetails) && count($drinksDetails) > 0)
   <table>
@@ -167,7 +160,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="3" class="right">Drinks Total:</td>
+        <td colspan="3" class="right">Total Drinks:</td>
         <td class="right">{{ number_format($drinksTotal, 2) }} EGP</td>
         <td></td>
       </tr>
@@ -202,7 +195,7 @@
       @endif
 
       <tr>
-        <td class="right muted">Drinks Total:</td>
+        <td class="right muted">Total Drinks:</td>
         <td class="right">{{ number_format($drinksTotal, 2) }} EGP</td>
       </tr>
 
