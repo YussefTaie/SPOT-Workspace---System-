@@ -141,6 +141,11 @@
           </form>
           <button class="btn ghost" onclick="openExpenseModal()">💸 Add Expense</button>
 
+          <button class="btn ghost"
+            onclick="window.open('{{ route('admin.courses.index') }}', '_blank')"
+            id="menu">
+            Courses
+          </button>
           <button class="btn ghost" onclick="window.location.href='{{ route('admin.menu.index') }}'" id="menu">Edit Menu</button>
         </div>
       </div>

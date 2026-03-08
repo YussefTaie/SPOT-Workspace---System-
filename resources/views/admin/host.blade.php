@@ -131,6 +131,20 @@
           <button class="btn ghost" onclick="openHoldSessionsModal()">🕓 Hold Sessions</button>
           <button class="btn ghost" onclick="openGuestSearchModal()">🔍 Search Guest</button>
           <button class="btn ghost" onclick="openExpenseModal()">💸 Add Expense</button>
+          <form
+            action="{{ route('admin.shifts.change') }}"
+            method="POST"
+            onsubmit="return confirm('Close current shift and start a new one?')">
+            @csrf
+            <button class="btn ghost">
+              🔁 Change Shift
+            </button>
+          </form>
+          <button class="btn ghost"
+            onclick="window.open('{{ route('admin.courses.index') }}', '_blank')"
+            id="menu">
+            Courses
+            </button>
 
         </div>
       </div>
